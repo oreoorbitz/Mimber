@@ -23,7 +23,7 @@ Timber is **Shopify 1.0** (`assets/layout/snippets/templates/config`). `shopify 
 | Step | Command | What |
 |---|---|---|
 | 1 | `cp config.yml.example config.yml` | Fill `store`, `password` (private app), `theme_id` or `THEMEKIT_STORE/THEMEKIT_PASSWORD/THEMEKIT_THEME_ID` env |
-| 2 | `go run ./cmd/mimber build` (`npm run mimber:build`) | Vite `esnext+Babel last3` → `dist/timber.*.js` + `build:theme` → `dist/theme` (Shopify 1.0 structure + modern `assets/timber.js`) |
+| 2 | `go run ./cmd/mimber build` (`npm run mimber:build`) | `esbuild` Go `es2017≈last3` → `dist/timber.*.js` + `dist/theme` (Shopify 1.0 structure + modern `assets/timber.js`) |
 | 3 | `go run ./cmd/mimber deploy` (`npm run mimber:deploy`) | Upload `dist/theme` via bundled fork `vendor/themekit/bin/theme` (`go build -o vendor/themekit/bin/theme ./vendor/themekit/...`) |
 | 4 | `go run ./cmd/mimber preview --url` (`npm run mimber:preview`) | Print `https://{store}/?_ab=0&_fd=0&_sc=1&preview_theme_id={theme_id}` (x.y + z from `config.yml`/`--store`/`--theme-id`) |
 | 5 | `go run ./cmd/mimber harness --preview` (`npm run mimber:harness`) | Build → deploy → `playwright --grep preview` (full store preview) |
@@ -137,10 +137,10 @@ Never vendor Mepto silently — `{{ 'mepto.js' \| asset_url \| script_tag }}` fi
 ## Build loop
 
 ```bash
-# Requires Go 1.22+ (LLM does the work, developer installs Go) + Node 22 LTS (nvm use)
+# Requires Go 1.22+ (LLM does the work, developer installs Go) + Node 22 LTS (nvm use, for Playwright)
 go version && nvm use
-npm install                      # vendor/themekit already as submodule
-go run ./cmd/mimber build        # Vite + build:theme → dist/* + dist/theme
+npm install                      # vendor/themekit already as submodule (oreoorbitz/themekit)
+go run ./cmd/mimber build        # esbuild Go → dist/* + dist/theme (replaces Vite+Babel)
 go run ./cmd/mimber preview --url --store x.y --theme-id z
 go run ./cmd/mimber harness --preview  # build → deploy → playwright --grep preview
 go run ./cmd/mimber harness      # build → playwright --grep local (offline, 2 tests)
@@ -149,9 +149,10 @@ go run ./cmd/mimber harness      # build → playwright --grep local (offline, 2
 # One-offs:
 npx playwright install --with-deps chromium  # first time only
 cp config.yml.example config.yml # fill store=x.y theme_id=z password (or THEMEKIT_STORE/THEMEKIT_THEME_ID)
+go vet ./...                     # Go vet for cmd/mimber + vendor/themekit/cmd/mimber
 ```
 node --check src/*.js
-grep -c "jQuery" dist/theme/assets/timber.js  # → 0 (comments only)
+grep -c "jQuery" dist/theme/assets/timber.js  # → 0 (comments only in frozen assets/timber.js.liquid)
 ```
 
 Dist current (slice 8 query-opt): `timber.esm.js 65K` / `timber.pkgd.js 68K` / `timber.pkgd.min.js 34.7K` (`10.4K gzip`). Slices 1-8 complete (query-opt per **measurethat #16434**: `byId`/`byClass`/`byTag` vs QSA, `closest` only for delegation). Save still **46K+1 req** (handlebars deleted).
