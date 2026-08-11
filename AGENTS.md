@@ -2,7 +2,7 @@
 
 Mimber is a **reference DB**, not an installable theme. Fork of `Shopify/Timber@2.2.2` (MIT, 2014). Most client Shopify themes are 5-10yr forks of this — diff against Mimber, then apply Mepto/modern patches to *client* files. **Start every LLM session here**, then follow the router.
 
-**Runtime:** Go 1.22+ + Node 22 LTS (Go orchestrates, LLM does the work — `go` required, `nvm use` for Vite). Build = Vite `esnext` + `@rollup/plugin-babel` `last 3 versions` + `bugfixes:true` (same as `flickity-mepto`/`currencies`/`recently-viewed`).
+**Runtime:** Go 1.22+ (`go` required, Mepto-bundled `vendor/themekit` + `esbuild` Go `github.com/evanw/esbuild`) + Node 22 LTS (`nvm use` for Playwright). Build = **`esbuild` Go** `es2017≈last3` `bundle/minify` (replaces `Vite` + `@rollup/plugin-babel`).
 
 ---
 
@@ -94,13 +94,13 @@ Update this table when you land a slice — LLM points at this file.
 | `src/scheduler.js` | FastDOM `measure`/`mutate` rAF | Shared by slice 1-6 |
 | `src/mepto.js` | `window.mepto \|\| window.jQuery` getter (`$`) | Shared |
 | `src/index.js` | Assembles `window.timber` legacy names, `DOMContentLoaded` auto-init | Entry |
-| `dist/timber.esm.js` / `dist/timber.pkgd.js` / `dist/timber.pkgd.min.js` | Built artifacts — Vite `esnext` + Babel `last 3` | Copy `pkgd.min.js` → client `assets/timber.js` |
+| `dist/timber.esm.js` / `dist/timber.pkgd.js` / `dist/timber.pkgd.min.js` | Built artifacts — **`esbuild` Go** `es2017≈last3` `minify` (no Vite/Babel) | Copy `pkgd.min.js` → client `assets/timber.js` |
 | `dist/theme/` | **Shopify 1.0 theme for ThemeKit** — `assets/timber.js` (modern), `layout/theme.liquid`, `config/`, `snippets/`, `templates/` | `go run ./cmd/mimber deploy` → `dist/theme` (`directory: dist/theme` in `config.yml`) |
-| `vendor/themekit/` | **Bundled ThemeKit fork** `oreoorbitz/themekit` (Go, 1.0) — `cmd/mimber` | `go build -o vendor/themekit/bin/theme ./vendor/themekit/...` → `bin/theme` |
+| `vendor/themekit/` | **Bundled ThemeKit fork** `oreoorbitz/themekit` (Go, 1.0) + `esbuild` (`github.com/evanw/esbuild v0.25`) — `cmd/mimber` | `go build -o bin/mimber ./cmd/mimber` → single Go CLI (JS bundler + ThemeKit) |
 | `config.yml.example` | ThemeKit legacy config (store + `theme_id` + `preview_theme_id`) | `cp config.yml.example config.yml`, fill `x.y` + `z` |
-| `cmd/mimber/main.go` + `vendor/themekit/cmd/mimber/` | **Go orchestrator** `mimber` (`Cobra`: `build`/`deploy`/`preview`/`harness`) | `go run ./cmd/mimber` or `bin/mimber` |
+| `cmd/mimber/main.go` + `vendor/themekit/cmd/mimber/` | **Go orchestrator** `mimber` (`Cobra` + `esbuild` Go) — `build`/`deploy`/`preview`/`harness` | `go run ./cmd/mimber` or `bin/mimber` |
 | `playwright.config.mjs` + `tests/preview.spec.js` | Playwright harness — `_ab=0&_fd=0&_sc=1&preview_theme_id=z` | `go run ./cmd/mimber harness --preview` (full) / `harness` (local) |
-| `package.json` (`type:module`, `browserslist last 3`), `vite.config.mjs`+`vite.min.config.mjs`, `babel.config.json` | Build parity with `flickity-mepto`/`currencies` | Reuse in client build |
+| `package.json` (`type:module`, `browserslist last 3`) | Keep `type:module` for `scripts/build-theme.mjs`; `vite`/`babel` removed (now Go esbuild) | — |
 | `README.md` | Upstream Timber README (deprecated notice) — not orchestrator | Ignore |
 | `spec/` | Timber i18n Ruby tests — not JS modernization | Ignore |
 
