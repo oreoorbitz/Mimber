@@ -2,7 +2,7 @@
 
 Mimber is a **reference DB**, not an installable theme. Fork of `Shopify/Timber@2.2.2` (MIT, 2014). Most client Shopify themes are 5-10yr forks of this — diff against Mimber, then apply Mepto/modern patches to *client* files. **Start every LLM session here**, then follow the router.
 
-**Runtime:** Node 22 LTS (`nvm use`, `engines.node >=18`). Build = Vite `esnext` + `@rollup/plugin-babel` `last 3 versions` + `bugfixes:true` (same as `flickity-mepto`/`currencies`/`recently-viewed`).
+**Runtime:** Go 1.22+ + Node 22 LTS (Go orchestrates, LLM does the work — `go` required, `nvm use` for Vite). Build = Vite `esnext` + `@rollup/plugin-babel` `last 3 versions` + `bugfixes:true` (same as `flickity-mepto`/`currencies`/`recently-viewed`).
 
 ---
 
@@ -16,20 +16,20 @@ Mimber is a **reference DB**, not an installable theme. Fork of `Shopify/Timber@
 
 ## Preview harness (ThemeKit + Playwright) — LLM can run without `shopify theme` 2.0
 
-Timber is **Shopify 1.0** (`assets/layout/snippets/templates/config`). `shopify theme` CLI is 2.0 and rejects 1.0. Use **bundled ThemeKit fork** (`oreoorbitz/themekit`, Go, vendored at `vendor/themekit` + bundled with Mepto `meptos` for customization) for now. Order: JS → CSS → Liquid (this repo does JS first, CSS/Liquid last).
+Timber is **Shopify 1.0** (`assets/layout/snippets/templates/config`). `shopify theme` CLI is 2.0 and rejects 1.0. Use **bundled ThemeKit fork** (`oreoorbitz/themekit`, Go, vendored at `vendor/themekit` + bundled with Mepto `meptos` for customization) — Go is required (LLM does the store update, developer installs Go). Order: JS → CSS → Liquid (this repo does JS first, CSS/Liquid last).
 
-**Go orchestrator** (`go` + `Cobra`): `cmd/mimber` wraps all three — `vendor/themekit/cmd/mimber` is the canonical `mimber` CLI (Go) importing ThemeKit as lib; `Mimber/cmd/mimber/main.go` is the thin proxy (`go run ./cmd/mimber`). Build a single `bin/mimber` binary (`go build -o bin/mimber ./cmd/mimber`) that LLM can run without Node.
+**Go orchestrator** (`go` 1.22+ `Cobra`): `cmd/mimber` wraps all three — `vendor/themekit/cmd/mimber` is canonical `mimber` CLI (imports ThemeKit as lib); `Mimber/cmd/mimber/main.go` proxy (`go run ./cmd/mimber`). Build single `bin/mimber` (`go build -o bin/mimber ./cmd/mimber`).
 
-| Step | Command (Go) | Command (Node fallback) | What |
-|---|---|---|---|
-| 1 | `cp config.yml.example config.yml` | same | Fill `store`, `password` (private app), `theme_id` or `THEMEKIT_STORE/THEMEKIT_PASSWORD/THEMEKIT_THEME_ID` env |
-| 2 | `go run ./cmd/mimber build` (`npm run mimber:build`) | `npm run build` | Vite `esnext+Babel last3` → `dist/timber.*.js` + `npm run build:theme` → `dist/theme` (Shopify 1.0 structure + modern `assets/timber.js`) |
-| 3 | `go run ./cmd/mimber deploy` (`npm run mimber:deploy`) | `node scripts/themekit.mjs deploy` / `npm run theme:deploy` | Upload `dist/theme` via **bundled fork** `vendor/themekit/bin/theme` (built via `npm run themekit:build` with Go, else falls back to `@shopify/themekit` S3 binary or `theme` on PATH) |
-| 4 | `go run ./cmd/mimber preview --url` (`npm run mimber:preview`) | Prints `https://{store}/?_ab=0&_fd=0&_sc=1&preview_theme_id={theme_id}` (x.y + z from `config.yml` / `--store`/`--theme-id`) |
-| 5 | `go run ./cmd/mimber harness --preview` (`npm run mimber:harness`) | **Go orchestrated**: build → deploy → `playwright --grep preview` |
-| Local only (no store) | `npx playwright test --grep local` | Asserts `dist/theme` structure + bundle (no network) — 2 tests, ~0.6s |
+| Step | Command | What |
+|---|---|---|
+| 1 | `cp config.yml.example config.yml` | Fill `store`, `password` (private app), `theme_id` or `THEMEKIT_STORE/THEMEKIT_PASSWORD/THEMEKIT_THEME_ID` env |
+| 2 | `go run ./cmd/mimber build` (`npm run mimber:build`) | Vite `esnext+Babel last3` → `dist/timber.*.js` + `build:theme` → `dist/theme` (Shopify 1.0 structure + modern `assets/timber.js`) |
+| 3 | `go run ./cmd/mimber deploy` (`npm run mimber:deploy`) | Upload `dist/theme` via bundled fork `vendor/themekit/bin/theme` (`go build -o vendor/themekit/bin/theme ./vendor/themekit/...`) |
+| 4 | `go run ./cmd/mimber preview --url` (`npm run mimber:preview`) | Print `https://{store}/?_ab=0&_fd=0&_sc=1&preview_theme_id={theme_id}` (x.y + z from `config.yml`/`--store`/`--theme-id`) |
+| 5 | `go run ./cmd/mimber harness --preview` (`npm run mimber:harness`) | Build → deploy → `playwright --grep preview` (full store preview) |
+| 5 local | `go run ./cmd/mimber harness` | Build → `playwright --grep local` (offline `dist/theme` checks, 2 tests, ~0.6s) |
 
-Env: `THEMEKIT_STORE=foo.myshopify.com THEMEKIT_THEME_ID=123456789 THEMEKIT_PASSWORD=xxx npm run test:preview`.
+Env: `THEMEKIT_STORE=foo.myshopify.com THEMEKIT_THEME_ID=123456789 THEMEKIT_PASSWORD=xxx go run ./cmd/mimber harness --preview`.
 
 ---
 
@@ -92,13 +92,11 @@ Update this table when you land a slice — LLM points at this file.
 | `src/mepto.js` | `window.mepto \|\| window.jQuery` getter (`$`) | Shared |
 | `src/index.js` | Assembles `window.timber` legacy names, `DOMContentLoaded` auto-init | Entry |
 | `dist/timber.esm.js` / `dist/timber.pkgd.js` / `dist/timber.pkgd.min.js` | Built artifacts — Vite `esnext` + Babel `last 3` | Copy `pkgd.min.js` → client `assets/timber.js` |
-| `dist/theme/` | **Shopify 1.0 theme for ThemeKit** — `assets/timber.js` (modern), `layout/theme.liquid`, `config/`, `snippets/`, `templates/` | `node scripts/themekit.mjs deploy` uploads `dist/theme` (`directory: dist/theme` in `config.yml`) |
-| `vendor/themekit/` | **Bundled ThemeKit fork** `oreoorbitz/themekit` (Go) — customized with Mepto, 1.0 workflow | `go build` → `vendor/themekit/bin/theme`; `scripts/themekit.mjs` prefers this, then `@shopify/themekit` |
-| `config.yml.example` | ThemeKit legacy config (store + `theme_id` + `preview_theme_id` in preview URL) | `cp config.yml.example config.yml`, fill `x.y` + `z` |
-| `scripts/build-theme.mjs` | Copies `assets/layout/config/locales/snippets/templates` → `dist/theme` + overlays `dist/timber.pkgd.min.js` | `npm run build:theme` (also `npm run build`) |
-| `scripts/themekit.mjs` | Fork wrapper — resolves `vendor/themekit/bin/theme` → `@shopify/themekit` → `theme` PATH | `node scripts/themekit.mjs deploy/watch --help` |
-| `cmd/mimber/main.go` + `vendor/themekit/cmd/mimber/` | **Go orchestrator** `mimber` (`Cobra`: `build`/`deploy`/`preview`/`harness`) — `go run ./cmd/mimber` or `bin/mimber` | `go run ./cmd/mimber build/deploy/preview/harness` |
-| `playwright.config.mjs` + `tests/preview.spec.js` | Playwright harness — `_ab=0&_fd=0&_sc=1&preview_theme_id=z` | `npm run test:preview` / `go run ./cmd/mimber harness --preview` |
+| `dist/theme/` | **Shopify 1.0 theme for ThemeKit** — `assets/timber.js` (modern), `layout/theme.liquid`, `config/`, `snippets/`, `templates/` | `go run ./cmd/mimber deploy` → `dist/theme` (`directory: dist/theme` in `config.yml`) |
+| `vendor/themekit/` | **Bundled ThemeKit fork** `oreoorbitz/themekit` (Go, 1.0) — `cmd/mimber` | `go build -o vendor/themekit/bin/theme ./vendor/themekit/...` → `bin/theme` |
+| `config.yml.example` | ThemeKit legacy config (store + `theme_id` + `preview_theme_id`) | `cp config.yml.example config.yml`, fill `x.y` + `z` |
+| `cmd/mimber/main.go` + `vendor/themekit/cmd/mimber/` | **Go orchestrator** `mimber` (`Cobra`: `build`/`deploy`/`preview`/`harness`) | `go run ./cmd/mimber` or `bin/mimber` |
+| `playwright.config.mjs` + `tests/preview.spec.js` | Playwright harness — `_ab=0&_fd=0&_sc=1&preview_theme_id=z` | `go run ./cmd/mimber harness --preview` (full) / `harness` (local) |
 | `package.json` (`type:module`, `browserslist last 3`), `vite.config.mjs`+`vite.min.config.mjs`, `babel.config.json` | Build parity with `flickity-mepto`/`currencies` | Reuse in client build |
 | `README.md` | Upstream Timber README (deprecated notice) — not orchestrator | Ignore |
 | `spec/` | Timber i18n Ruby tests — not JS modernization | Ignore |
@@ -136,24 +134,19 @@ Never vendor Mepto silently — `{{ 'mepto.js' \| asset_url \| script_tag }}` fi
 ## Build loop
 
 ```bash
-nvm use                          # 22 LTS (or Node >=18)
-npm install                      # vendor/themekit fork already cloned; @shopify/themekit fallback via postinstall
-# Go orchestrator (preferred — single binary, no npm):
-go run ./cmd/mimber build        # or npm run mimber:build → same (Vite + build:theme)
-go run ./cmd/mimber preview --url --store x.y --theme-id z  # or npm run mimber:preview
-go run ./cmd/mimber harness --preview  # or npm run mimber:harness — build→deploy→playwright preview
-# Build single binary: go build -o bin/mimber ./cmd/mimber && ./bin/mimber --help
+# Requires Go 1.22+ (LLM does the work, developer installs Go) + Node 22 LTS (nvm use)
+go version && nvm use
+npm install                      # vendor/themekit already as submodule
+go run ./cmd/mimber build        # Vite + build:theme → dist/* + dist/theme
+go run ./cmd/mimber preview --url --store x.y --theme-id z
+go run ./cmd/mimber harness --preview  # build → deploy → playwright --grep preview
+go run ./cmd/mimber harness      # build → playwright --grep local (offline, 2 tests)
+# Single binary: go build -o bin/mimber ./cmd/mimber && ./bin/mimber --help
 
-# Node fallback (no Go):
-npm run build                    # clean + vite + vite.min + banner + build:theme → dist/* + dist/theme (needs Node 22)
-# optional: build fork binary (needs Go): npm run themekit:build  # → vendor/themekit/bin/theme
+# One-offs:
 npx playwright install --with-deps chromium  # first time only
-npx playwright test --grep local # offline: asserts dist/theme structure
-# ThemeKit preview (needs store) — Node fallback:
-cp config.yml.example config.yml # fill store = x.y (your-store.myshopify.com), theme_id = z, password
-node scripts/themekit.mjs deploy # or npm run theme:deploy (uses oreoorbitz/themekit fork → @shopify/themekit fallback)
-go run ./cmd/mimber preview --url # or npm run theme:preview:url — prints https://x.y/?_ab=0&_fd=0&_sc=1&preview_theme_id=z
-npx playwright test --grep preview  # opens preview URL (x.y + z)
+cp config.yml.example config.yml # fill store=x.y theme_id=z password (or THEMEKIT_STORE/THEMEKIT_THEME_ID)
+```
 node --check src/*.js
 grep -c "jQuery" dist/theme/assets/timber.js  # → 0 (comments only)
 ```
