@@ -42,7 +42,7 @@
 
         {% if article.image %}
           <a class="article__featured-image" href="{{ article.url }}">
-            {{ article | img_url: '1024x1024' | img_tag: article.title }}
+            {{ article.image | image_url: width: 800 | image_tag: alt: article.title, loading: 'lazy', widths: '400,800,1024' }}
           </a>
         {% endif %}
 

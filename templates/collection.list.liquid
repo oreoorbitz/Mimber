@@ -91,7 +91,7 @@
           <div class="grid large--display-table">
             <div class="grid__item large--one-fifth large--display-table-cell medium--one-third">
               <a href="{{ product.url | within: collection }}">
-                <img src="{{ product.featured_image.src | img_url: 'medium' }}" alt="{{ product.featured_image.alt | escape }}" class="grid__image">
+                {{ product.featured_image | image_url: width: 300 | image_tag: alt: product.featured_image.alt, loading: 'lazy', class: 'grid__image', widths: '200,300,400' }}
               </a>
             </div>
             <div class="grid__item large--four-fifths large--display-table-cell medium--two-thirds">

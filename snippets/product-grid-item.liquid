@@ -52,7 +52,7 @@
 
   {% endcomment %}
   <a href="{{ product.url | within: collection }}" class="grid__image">
-    <img src="{{ product.featured_image.src | img_url: 'large' }}" alt="{{ product.featured_image.alt | escape }}">
+    {{ product.featured_image | image_url: width: 400 | image_tag: alt: product.featured_image.alt, loading: 'lazy', widths: '200,400,600' }}
   </a>
 
   <p class="h6">

@@ -72,7 +72,7 @@
                     {% endcomment %}
                     <div class="grid__item one-third">
                       <a href="{{ item.url }}" title="{{ item.title | escape }}">
-                        {{ item.featured_image.src | img_url: 'medium' | img_tag: item.featured_image.alt }}
+                        {{ item.featured_image | image_url: width: 300 | image_tag: alt: item.featured_image.alt, loading: 'lazy', widths: '200,300,400' }}
                       </a>
                     </div>
                   {% endif %}
@@ -128,7 +128,7 @@
               <div class="grid__item search-result large--one-third medium--one-third">
                 {% if item.featured_image %}
                   <a href="{{ item.url | within: collection }}" title="{{ item.title | escape }}">
-                    {{ item.featured_image.src | img_url: 'medium' | img_tag: item.featured_image.alt }}
+                    {{ item.featured_image | image_url: width: 300 | image_tag: alt: item.featured_image.alt, loading: 'lazy', widths: '200,300,400' }}
                   </a>
                 {% endif %}
 

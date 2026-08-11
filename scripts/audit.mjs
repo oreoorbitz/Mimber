@@ -19,6 +19,8 @@ const rules = [
   { id:'js-splitting', title:'Single timber.js vs per-template split', severity:'medium', re:/\{\{\s*'timber\.js'\s*\|/, hint:'type="module" per-template global/product/collection/customer/cart (slice 9)' },
   { id:'css-vendor-prefix', title:'Vendor prefix / IE hack in SCSS (*zoom, -webkit-)', severity:'low', re:/\*zoom:\s*1|@mixin prefixer|-ms-transform|-webkit-transform:\s*translateZ\(0\)/, hint:'Evergreen: transform native, will-change only (slice 12)' },
   { id:'perf-closest', title:'Perf: closest in hot path', severity:'low', re:/\.closest\(/, hint:'Keep closest only for delegation' },
+  { id:'liquid-img-url-legacy', title:'Liquid img_url deprecated (use image_url: width: + image_tag)', severity:'medium', re:/img_url:/, hint:"Use {{ image | image_url: width: 800 | image_tag: alt: image.alt, loading: 'lazy' }} per shopify.dev image_url + image_tag" },
+  { id:'liquid-legacy-img-src', title:'Legacy <img src="{{ ... }}"> vs image_tag (product/article)', severity:'medium', re:/<img\s+src="\s*\{\{/, hint:"Use image_tag (auto srcset/width/height, loading:'lazy'/'eager' fetchpriority:'high') per shopify.dev image_tag — asset_url logos excluded" },
 ]
 
 function walk(dir, out=[]) {
@@ -55,6 +57,8 @@ for (const file of files) {
       if (r.id==='js-splitting' && content.includes('global.js')) continue
       // skip comment-only lines for jquery-selector to avoid // $('#ProductThumbs') doc
       if (r.id==='jquery-selector' && line.trim().startsWith('//')) continue
+      // skip static asset logos (asset_url) for liquid-legacy-img-src — product images only
+      if (r.id==='liquid-legacy-img-src' && (line.includes('asset_url') || line.includes('shopify_asset_url'))) continue
       if (r.re.test(line)) {
         const snip = line.trim().slice(0,120)
         hits.push({ rule:r.id, file:rel, line:i+1, snippet:snip, hint:r.hint })
