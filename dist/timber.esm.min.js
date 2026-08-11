@@ -187,14 +187,235 @@ var replaceUrlParam = function replaceUrlParam(url, param, value) {
   return url + (url.indexOf('?') > 0 ? '&' : '?') + param + '=' + value;
 };
 
-// timber — first slice: prepareTransition + formatMoney
-// Full theme index will re-export subsequent slices; this slice is independently shippable.
+var q = function q(sel) {
+  var root = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : document;
+  return root.querySelector(sel);
+};
+var qq = function qq(sel) {
+  var root = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : document;
+  return _toConsumableArray(root.querySelectorAll(sel));
+};
+var cacheSelectors = function cacheSelectors(timber) {
+  // Keep $ prefix for bw compat; values are Mepto collections if mepto present else native arrays/elements
+  // Use mepto where available so callers can .on/.toggleClass; fall back to native query.
+  var mepto = $ ? window.mepto || window.jQuery : null;
+  var useMepto = !!mepto;
+  var sel = function sel(s) {
+    return useMepto ? mepto(s) : qq(s);
+  };
+  var sel1 = function sel1(s) {
+    return useMepto ? mepto(s) : q(s);
+  };
+
+  // Product thumbs: $('#ProductThumbs').find('a.product-single__thumbnail')
+  var thumbRoot = q('#ProductThumbs');
+  var thumbImages = thumbRoot ? useMepto ? mepto('#ProductThumbs').find('a.product-single__thumbnail') : qq('a.product-single__thumbnail', thumbRoot) : sel('a.product-single__thumbnail__empty__');
+  timber.cache = {
+    // General
+    $html: useMepto ? mepto('html') : q('html'),
+    $body: useMepto ? mepto(document.body) : document.body,
+    // Navigation
+    $navigation: sel1('#AccessibleNav'),
+    $mobileSubNavToggle: sel('.mobile-nav__toggle'),
+    // Collection
+    $changeView: sel('.change-view'),
+    // Product
+    $productImage: sel1('#ProductPhotoImg'),
+    $thumbImages: thumbImages,
+    // Customer
+    $recoverPasswordLink: sel1('#RecoverPassword'),
+    $hideRecoverPasswordLink: sel1('#HideRecoverPasswordLink'),
+    $recoverPasswordForm: sel1('#RecoverPasswordForm'),
+    $customerLoginForm: sel1('#CustomerLoginForm'),
+    $passwordResetSuccess: sel1('#ResetSuccess')
+  };
+  // Normalize thumbImages empty sentinel: if no root, make empty mepto/array
+  if (!thumbRoot && timber.cache.$thumbImages && timber.cache.$thumbImages.length === 0) ;
+  return timber.cache;
+};
+
+var getHash = function getHash() {
+  return window.location.hash;
+};
+var switchImage = function switchImage(src, _imgObject, el) {
+  // el may be mepto collection, Node, or selector
+  var target = el && el[0] ? el[0] : el;
+  var node = typeof target === 'string' ? document.querySelector(target) : target;
+  if (!node) return;
+  // use scheduler mutate to batch src write (avoids layout thrash if many)
+  scheduler.mutate(function () {
+    node.setAttribute('src', src);
+  });
+};
+var mobileNavToggle = function mobileNavToggle(timber) {
+  var _timber$cache;
+  var t = (_timber$cache = timber.cache) === null || _timber$cache === void 0 ? void 0 : _timber$cache.$mobileSubNavToggle;
+  if (!t) return;
+  var list = t.length !== undefined ? _toConsumableArray(t) : [t];
+  if (!list.length || list.length === 1 && !list[0]) return;
+  list.forEach(function (el) {
+    if (!el || !el.addEventListener) return;
+    el.addEventListener('click', function () {
+      var p = this.parentElement;
+      if (!p) return;
+      scheduler.mutate(function () {
+        return p.classList.toggle('mobile-nav--expanded');
+      });
+    });
+  });
+};
+var productImageSwitch = function productImageSwitch(timber) {
+  var _timber$cache2;
+  var thumbs = (_timber$cache2 = timber.cache) === null || _timber$cache2 === void 0 ? void 0 : _timber$cache2.$thumbImages;
+  if (!thumbs) return;
+  var list = thumbs.length !== undefined ? _toConsumableArray(thumbs) : [thumbs];
+  if (!list.length || list.length === 1 && !list[0]) return;
+  list.forEach(function (el) {
+    if (!el || !el.addEventListener) return;
+    el.addEventListener('click', function (evt) {
+      evt.preventDefault();
+      var href = el.getAttribute('href');
+      switchImage(href, null, timber.cache.$productImage);
+    });
+  });
+};
+var responsiveVideos = function responsiveVideos() {
+  var vids = _toConsumableArray(document.querySelectorAll('iframe[src*="youtube.com/embed"], iframe[src*="player.vimeo"]'));
+  var resets = _toConsumableArray(document.querySelectorAll('iframe#admin_bar_iframe'));
+  // batch wraps in mutate
+  scheduler.mutate(function () {
+    vids.forEach(function (el) {
+      if (el.parentElement && el.parentElement.classList.contains('video-wrapper')) return;
+      var wrap = document.createElement('div');
+      wrap.className = 'video-wrapper';
+      el.parentNode.insertBefore(wrap, el);
+      wrap.appendChild(el);
+    });
+    // Chrome back-cache iframe src reset — style read then write already batched
+    resets.forEach(function (el) {
+      el.src = el.src;
+    });
+  });
+};
+var collectionViews = function collectionViews(timber) {
+  var _timber$cache3;
+  var c = (_timber$cache3 = timber.cache) === null || _timber$cache3 === void 0 ? void 0 : _timber$cache3.$changeView;
+  if (!c) return;
+  var list = c.length !== undefined ? _toConsumableArray(c) : [c];
+  if (!list.length || list.length === 1 && !list[0]) return;
+  list.forEach(function (el) {
+    if (!el || !el.addEventListener) return;
+    el.addEventListener('click', function () {
+      var view = this.getAttribute('data-view') || this.dataset && this.dataset.view || '';
+      var url = document.URL;
+      var hasParams = url.indexOf('?') > -1;
+      window.location = hasParams ? replaceUrlParam(url, 'view', view) : url + '?view=' + view;
+    });
+  });
+};
+var loginForms = function loginForms(timber) {
+  var showRecover = function showRecover() {
+    scheduler.mutate(function () {
+      var a = timber.cache.$recoverPasswordForm;
+      var b = timber.cache.$customerLoginForm;
+      if (a) {
+        var n = a[0] || a;
+        if (n.style) n.style.display = '';
+        if (n.style && n.style.display === 'none') n.style.display = 'block';
+        if (!a.length) n.style.display = '';
+      }
+      // normalize: mepto .show() sets display block; native fallback
+      var af = a && a[0] ? a[0] : a;
+      var bf = b && b[0] ? b[0] : b;
+      if (af && af.style) af.style.display = 'block';
+      if (bf && bf.style) bf.style.display = 'none';
+    });
+  };
+  var hideRecover = function hideRecover() {
+    scheduler.mutate(function () {
+      var af = timber.cache.$recoverPasswordForm && (timber.cache.$recoverPasswordForm[0] || timber.cache.$recoverPasswordForm);
+      var bf = timber.cache.$customerLoginForm && (timber.cache.$customerLoginForm[0] || timber.cache.$customerLoginForm);
+      if (af && af.style) af.style.display = 'none';
+      if (bf && bf.style) bf.style.display = 'block';
+    });
+  };
+  var aLink = timber.cache.$recoverPasswordLink;
+  var hLink = timber.cache.$hideRecoverPasswordLink;
+  var aNode = aLink && (aLink[0] || aLink);
+  var hNode = hLink && (hLink[0] || hLink);
+  if (aNode && aNode.addEventListener) aNode.addEventListener('click', function (e) {
+    e.preventDefault();
+    showRecover();
+  });
+  if (hNode && hNode.addEventListener) hNode.addEventListener('click', function (e) {
+    e.preventDefault();
+    hideRecover();
+  });
+  if (getHash() === '#recover') showRecover();
+};
+var resetPasswordSuccess = function resetPasswordSuccess(timber) {
+  var _timber$cache4;
+  var el = (_timber$cache4 = timber.cache) === null || _timber$cache4 === void 0 ? void 0 : _timber$cache4.$passwordResetSuccess;
+  var node = el && (el[0] || el);
+  if (!node || !node.style) return;
+  scheduler.mutate(function () {
+    node.style.display = 'block';
+  });
+};
+
+// timber — slice 2: cache + small utils (see utils.js)
+// Slice 1: prepareTransition + formatMoney
 if (typeof window !== 'undefined') {
   window.Shopify = window.Shopify || {};
   installFormatMoney(window.Shopify);
   attachPrepareTransition();
+  window.timber = window.timber || {};
+  // keep legacy names
+  window.timber.cacheSelectors = function () {
+    return cacheSelectors(window.timber);
+  };
+  window.timber.getHash = getHash;
+  window.timber.switchImage = switchImage;
+  window.timber.mobileNavToggle = function () {
+    return mobileNavToggle(window.timber);
+  };
+  window.timber.productImageSwitch = function () {
+    return productImageSwitch(window.timber);
+  };
+  window.timber.responsiveVideos = responsiveVideos;
+  window.timber.collectionViews = function () {
+    return collectionViews(window.timber);
+  };
+  window.timber.loginForms = function () {
+    return loginForms(window.timber);
+  };
+  window.timber.resetPasswordSuccess = function () {
+    return resetPasswordSuccess(window.timber);
+  };
+  window.timber.init;
+  window.timber.init = function () {
+    // FastClick removed (evergreen); keep rest, defer to present slices
+    cacheSelectors(window.timber);
+    if (typeof window.timber.accessibleNav === 'function') try {
+      window.timber.accessibleNav();
+    } catch (_) {}
+    if (typeof window.timber.drawersInit === 'function') try {
+      window.timber.drawersInit();
+    } catch (_) {}
+    mobileNavToggle(window.timber);
+    productImageSwitch(window.timber);
+    responsiveVideos();
+    collectionViews(window.timber);
+    loginForms(window.timber);
+  };
+  // auto-init on DOM ready (replaces $(timber.init))
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () {
+    return window.timber.init();
+  });else queueMicrotask(function () {
+    return window.timber.init();
+  });
 }
 // eslint-disable-next-line no-undef
 var ShopifyFormatMoney = typeof Shopify !== 'undefined' ? Shopify.formatMoney : undefined;
 
-export { ShopifyFormatMoney, prepareTransition, replaceUrlParam };
+export { ShopifyFormatMoney, cacheSelectors, collectionViews, getHash, loginForms, mobileNavToggle, prepareTransition, productImageSwitch, replaceUrlParam, resetPasswordSuccess, responsiveVideos, switchImage };
