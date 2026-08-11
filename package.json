@@ -9,12 +9,9 @@
     "last 3 versions"
   ],
   "scripts": {
-    "clean": "node -e \"fs.rmSync('dist',{recursive:true,force:true})\"",
+    "clean": "go run ./cmd/mimber clean 2>&1 | head -n 5; rm -rf dist",
     "build": "go run ./cmd/mimber build",
-    "build:theme": "node scripts/build-theme.mjs",
-    "dev": "vite build --watch",
-    "lint": "npx eslint src --ext .js",
-    "theme:check": "npx theme check --path dist/theme 2>&1 | head -n 100; echo \"(use shopify theme check for 2.0; ThemeKit theme is 1.0)\"",
+    "lint": "npx eslint src --ext .js 2>&1 | head -n 30; echo \"(vite/babel removed — lint via eslint only)\"",
     "themekit:build": "go build -o vendor/themekit/bin/theme ./vendor/themekit/...",
     "mimber": "go run ./cmd/mimber --help 2>&1 | head -n 40",
     "mimber:build": "go run ./cmd/mimber build",
