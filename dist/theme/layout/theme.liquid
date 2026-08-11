@@ -27,12 +27,22 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,shrink-to-fit=no">
   <meta name="theme-color" content="{{ settings.color_primary }}">
 
-  <!-- CSS ================================================== -->
-  {{ 'timber.scss.css' | asset_url | stylesheet_tag }}
+  <!-- CSS — vanilla (Dawn/Horizon): Liquid vars inline via css-variables, static in base.css -->
+  {% render 'css-variables' %}
+  {{ 'base.css' | asset_url | stylesheet_tag }}
+  <!-- Legacy fallback (timber.scss.liquid) — keep file but not loaded; Shopify compiles SCSS if needed -->
+  <!-- {{ 'timber.scss.css' | asset_url | stylesheet_tag }} -->
 
   <!-- Header hook for plugins ================================================== -->
   {{ content_for_header }}
   {% include 'oldIE-js' %}
+
+  <script>
+    window.Shopify = window.Shopify || {};
+    window.Shopify.routes = window.Shopify.routes || {};
+    window.Shopify.routes.root = {{ routes.root_url | json }};
+    window.Shopify.locale = {{ request.locale.iso_code | json }};
+  </script>
 
   {{ 'mepto.js' | asset_url | script_tag }}
 
@@ -391,15 +401,27 @@
     <!-- //site-footer -->
   </div>
 
+  {% comment %} Mimber split: global (<14KB gzip) + scoped per-template (HTTP/2 multiplex, 2026). ESM modules + legacy IIFE fallback. {% endcomment %}
+  <script type="module" src="{{ 'global.js' | asset_url }}"></script>
+  {% if template contains 'product' %}
+    <script type="module" src="{{ 'product.js' | asset_url }}"></script>
+  {% endif %}
+  {% if template contains 'collection' %}
+    <script type="module" src="{{ 'collection.js' | asset_url }}"></script>
+  {% endif %}
+  {% if template contains 'customers' %}
+    <script type="module" src="{{ 'customer.js' | asset_url }}"></script>
+  {% endif %}
+  {% comment %} Legacy IIFE fallback (timber.pkgd) for non-module or missing split assets {% endcomment %}
   {{ 'timber.js' | asset_url | script_tag }}
 
   {% comment %}
-    Template-specific js
+    Template-specific js (customer reset now in customer.js; kept fallback)
   {% endcomment %}
   <script>
     {% if resetPassword %}
       document.addEventListener('DOMContentLoaded', function() {
-        timber.resetPasswordSuccess();
+        if (window.timber && timber.resetPasswordSuccess) timber.resetPasswordSuccess();
       });
     {% endif %}
   </script>
@@ -411,7 +433,7 @@
   {% endcomment %}
   {% if settings.ajax_cart_method == "drawer" %}
     {% include 'ajax-cart-template' %}
-    {{ 'ajax-cart.js' | asset_url | script_tag }}
+    <script type="module" src="{{ 'cart.js' | asset_url }}"></script>
     <script>
       document.addEventListener('DOMContentLoaded', function() {
         ajaxCart.init({

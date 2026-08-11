@@ -9,7 +9,8 @@ const unwrap = (el) => (el && el[0] ? el[0] : el)
 const toArray = (els) => {
   if (!els) return []
   if (els.nodeType === 1) return [els]
-  if (typeof els.length === 'number' && els.tagName === undefined) return [...els].filter(Boolean).map(unwrap).filter(Boolean)
+  if (typeof els.length === 'number' && els.tagName === undefined)
+    return [...els].filter(Boolean).map(unwrap).filter(Boolean)
   return [unwrap(els)].filter(Boolean)
 }
 
@@ -21,12 +22,17 @@ export const accessibleNav = (timber) => {
   // :scope > li a is faster than full QSA + closest filter; fallback uses children (no closest) per bench
   const allLinks = [...nav.getElementsByTagName('a')] // faster than QSA 'a' (tag only)
   const directLis = [...nav.children].filter((el) => el.tagName === 'LI')
-  const topLevel = directLis.length ? directLis.flatMap((li) => [...li.querySelectorAll('a')]) : [...nav.querySelectorAll(':scope > li a')]
-  const topLevelLinks = topLevel.length ? topLevel : allLinks.filter((a) => {
-    // avoid closest('li') overhead — walk one parent up (li) then check nav contains, cheaper than closest
-    const li = a.parentElement && a.parentElement.tagName === 'LI' ? a.parentElement : a.closest('li')
-    return li && li.parentElement === nav
-  })
+  const topLevel = directLis.length
+    ? directLis.flatMap((li) => [...li.querySelectorAll('a')])
+    : [...nav.querySelectorAll(':scope > li a')]
+  const topLevelLinks = topLevel.length
+    ? topLevel
+    : allLinks.filter((a) => {
+        // avoid closest('li') overhead — walk one parent up (li) then check nav contains, cheaper than closest
+        const li =
+          a.parentElement && a.parentElement.tagName === 'LI' ? a.parentElement : a.closest('li')
+        return li && li.parentElement === nav
+      })
 
   // parents: simple class -> getElementsByClassName is faster than QSA per bench, but need array; use QSA for scoped nav still fine
   // Keep QSA for direct nav scope, but avoid global document QSA
@@ -60,7 +66,10 @@ export const accessibleNav = (timber) => {
   const handleFocus = (el) => {
     const node = unwrap(el)
     if (!node) return
-    const subMenu = node.nextElementSibling && node.nextElementSibling.tagName === 'UL' ? node.nextElementSibling : null
+    const subMenu =
+      node.nextElementSibling && node.nextElementSibling.tagName === 'UL'
+        ? node.nextElementSibling
+        : null
     const hasSubMenu = !!(subMenu && subMenu.classList.contains('sub-nav'))
     void hasSubMenu
     // closest is correct for ancestor delegation (need walk up), but per #16434 it's slower than QSA from known root

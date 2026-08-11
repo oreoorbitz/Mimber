@@ -16,7 +16,11 @@ export const cacheSelectors = (timber) => {
 
   // Product thumbs: $('#ProductThumbs').find('a.product-single__thumbnail')
   const thumbRoot = byId('ProductThumbs')
-  const thumbImages = thumbRoot ? (useMepto ? mepto('#ProductThumbs').find('a.product-single__thumbnail') : qq('a.product-single__thumbnail', thumbRoot)) : sel('a.product-single__thumbnail__empty__')
+  const thumbImages = thumbRoot
+    ? useMepto
+      ? mepto('#ProductThumbs').find('a.product-single__thumbnail')
+      : qq('a.product-single__thumbnail', thumbRoot)
+    : sel('a.product-single__thumbnail__empty__')
 
   timber.cache = {
     // General
@@ -28,7 +32,9 @@ export const cacheSelectors = (timber) => {
     $mobileSubNavToggle: sel('.mobile-nav__toggle'),
 
     // Collection — simple .class, use getElementsByClassName when native (faster than QSA per bench)
-    $changeView: useMepto ? sel('.change-view') : [...document.getElementsByClassName('change-view')],
+    $changeView: useMepto
+      ? sel('.change-view')
+      : [...document.getElementsByClassName('change-view')],
 
     // Product — byId for #id (fastest, per bench), avoids QSA parse
     $productImage: byId('ProductPhotoImg'),

@@ -8,7 +8,8 @@ const unwrap = (el) => (el && el[0] ? el[0] : el)
 const toArray = (els) => {
   if (!els) return []
   if (els.nodeType === 1) return [els]
-  if (typeof els.length === 'number' && els.tagName === undefined) return [...els].map(unwrap).filter(Boolean)
+  if (typeof els.length === 'number' && els.tagName === undefined)
+    return [...els].map(unwrap).filter(Boolean)
   return [unwrap(els)].filter(Boolean)
 }
 const trigger = (target, name, detail) => {
@@ -64,30 +65,48 @@ export class Drawer {
 
     if (this.drawerIsOpen && !externalCall) return this.close()
 
-    const body = (window.timber && window.timber.cache && unwrap(window.timber.cache.$body)) || document.body
+    const body =
+      (window.timber && window.timber.cache && unwrap(window.timber.cache.$body)) || document.body
     trigger(body, 'beforeDrawerOpen.timber', this)
 
     scheduler.mutate(() => {
       this.nodes.moved.forEach((el) => el.classList.add('is-transitioning'))
       prepareTransition(this.drawer)
-      this.nodes.parent.forEach((el) => el.classList.add(this.config.openClass, this.config.dirOpenClass))
+      this.nodes.parent.forEach((el) =>
+        el.classList.add(this.config.openClass, this.config.dirOpenClass)
+      )
     })
     this.drawerIsOpen = true
 
     this.trapFocus(this.drawer, 'drawer_focus')
 
-    if (this.config.onDrawerOpen && typeof this.config.onDrawerOpen === 'function' && !externalCall) {
+    if (
+      this.config.onDrawerOpen &&
+      typeof this.config.onDrawerOpen === 'function' &&
+      !externalCall
+    ) {
       this.config.onDrawerOpen()
     }
 
-    if (this.activeSource && this.activeSource.getAttribute && this.activeSource.getAttribute('aria-expanded') !== null) {
+    if (
+      this.activeSource &&
+      this.activeSource.getAttribute &&
+      this.activeSource.getAttribute('aria-expanded') !== null
+    ) {
       this.activeSource.setAttribute('aria-expanded', 'true')
     }
 
     // lock scrolling + page click close (namespaced .drawer)
     if (this.nodes.page) {
-      this._onTouchMove = (e) => { e.preventDefault(); return false }
-      this._onPageClick = (e) => { this.close(); e.preventDefault(); return false }
+      this._onTouchMove = (e) => {
+        e.preventDefault()
+        return false
+      }
+      this._onPageClick = (e) => {
+        this.close()
+        e.preventDefault()
+        return false
+      }
       this.nodes.page.addEventListener('touchmove', this._onTouchMove, { passive: false })
       this.nodes.page.addEventListener('click', this._onPageClick)
     }
@@ -97,19 +116,27 @@ export class Drawer {
 
   close() {
     if (!this.drawerIsOpen) return
-    const body = (window.timber && window.timber.cache && unwrap(window.timber.cache.$body)) || document.body
+    const body =
+      (window.timber && window.timber.cache && unwrap(window.timber.cache.$body)) || document.body
     trigger(body, 'beforeDrawerClose.timber', this)
 
     if (document.activeElement && document.activeElement.blur) {
-      try { document.activeElement.blur() } catch (_) {}
+      try {
+        document.activeElement.blur()
+      } catch (_) {}
       // also mepto trigger blur for compat
-      try { const mepto = window.mepto || window.jQuery; if (mepto) mepto(document.activeElement).trigger('blur') } catch (_) {}
+      try {
+        const mepto = window.mepto || window.jQuery
+        if (mepto) mepto(document.activeElement).trigger('blur')
+      } catch (_) {}
     }
 
     scheduler.mutate(() => {
       this.nodes.moved.forEach((el) => prepareTransition(el))
       prepareTransition(this.drawer)
-      this.nodes.parent.forEach((el) => el.classList.remove(this.config.dirOpenClass, this.config.openClass))
+      this.nodes.parent.forEach((el) =>
+        el.classList.remove(this.config.dirOpenClass, this.config.openClass)
+      )
     })
     this.drawerIsOpen = false
 
@@ -139,7 +166,10 @@ export class Drawer {
     el.focus()
     document.addEventListener('focusin', this._focusHandler)
     // also namespaced compat via mepto if available
-    try { const mepto = window.mepto || window.jQuery; if (mepto) mepto(document).on(eventName, this._focusHandler) } catch (_) {}
+    try {
+      const mepto = window.mepto || window.jQuery
+      if (mepto) mepto(document).on(eventName, this._focusHandler)
+    } catch (_) {}
   }
 
   removeTrapFocus(container, eventNamespace) {
@@ -149,11 +179,17 @@ export class Drawer {
     el.removeAttribute('tabindex')
     if (this._focusHandler) {
       document.removeEventListener('focusin', this._focusHandler)
-      try { const mepto = window.mepto || window.jQuery; if (mepto) mepto(document).off(eventName) } catch (_) {}
+      try {
+        const mepto = window.mepto || window.jQuery
+        if (mepto) mepto(document).off(eventName)
+      } catch (_) {}
       this._focusHandler = null
     } else {
       document.removeEventListener('focusin', () => {})
-      try { const mepto = window.mepto || window.jQuery; if (mepto) mepto(document).off(eventName) } catch (_) {}
+      try {
+        const mepto = window.mepto || window.jQuery
+        if (mepto) mepto(document).off(eventName)
+      } catch (_) {}
     }
   }
 }

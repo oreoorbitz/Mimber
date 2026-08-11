@@ -21,6 +21,8 @@ const previewUrl = readPreviewUrl()
 
 export default defineConfig({
   testDir: 'tests',
+  testMatch: /.*\.spec\.js/,
+  testIgnore: /unit\/.*/,
   fullyParallel: true,
   reporter: [['list'], ['html', { open: 'never' }]],
   use: {

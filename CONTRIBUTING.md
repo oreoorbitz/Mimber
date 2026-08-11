@@ -10,16 +10,17 @@ Mimber is a **reference DB** fork of `Shopify/Timber@2.2.2` modernized with Mept
 ## Workflow (human + LLM)
 
 1. **Start at `AGENTS.md`** — router → slice status. LLM prompt: `Read mimber-reference/AGENTS.md then <task>`. Human: same file.
-2. **Slice size**: one focused change (e.g., `cacheSelectors` → `src/cache.js`), `go.mod` + `src/*` + `dist/theme`, `AGENTS.md` slice table + File map updated in same commit. Keep `dist/` committed for ThemeKit `dist/theme`.
-3. **JS modernization**: `window.mepto||jQuery`, `classList`/`fetch`/`URLSearchParams`/`DOMContentLoaded`, `getElementById`/`getElementsByClassName` per `measurethat #16434`, `DocumentFragment` + `<template>` (handlebars deleted `a12db69`), `scheduler` `rAF` `measure`/`mutate`.
-4. **Go orchestration**: `vendor/themekit/cmd/mimber` is canonical `mimber` CLI (`Cobra` + `esbuild` Go + ThemeKit lib). `Mimber/cmd/mimber/main.go` is thin proxy (`go run ./cmd/mimber`). Don’t edit `dist/` by hand.
+2. **Slice size**: one focused change (e.g., `cacheSelectors` → `src/cache.js` or `timber.scss.liquid` `prefixer` → `base.css`), `go.mod` + `src/*`/`assets/*` + `dist/theme`, `AGENTS.md` slice table + File map updated in same commit. Keep `dist/` committed for ThemeKit `dist/theme`.
+3. **JS modernization**: `window.mepto||jQuery`, `classList`/`fetch`/`URLSearchParams`/`DOMContentLoaded`, `getElementById`/`getElementsByClassName` per `measurethat #16434`, `DocumentFragment` + `<template>` (handlebars deleted `a12db69`), `scheduler` `rAF` `measure`/`mutate`, per-template `src/entry/{global,product,collection,customer,cart}.js` (<14K gzip, `type="module"` `splitting`), locale-aware `cartUrl()` via `Shopify.routes.root {{ routes.root_url }}`.
+4. **CSS modernization**: evergreen only — remove `prefixer`/`*zoom`/`-webkit` hacks, vanilla `assets/base.css` + `snippets/css-variables.liquid` per [Dawn](https://github.com/Shopify/dawn) + [Horizon](https://github.com/Shopify/horizon) (`{% style %}:root{--color-primary:{{ settings.color_primary }}}` inline, `var(--color-*)` in CSS), `base.css` generated via `npx sass` from `timber.scss.liquid` then `hex→var()`.
+5. **Go orchestration**: `vendor/themekit/cmd/mimber` is canonical `mimber` CLI (`Cobra` + `esbuild` Go + ThemeKit lib). `Mimber/cmd/mimber/main.go` is thin proxy (`go run ./cmd/mimber`). Don’t edit `dist/` by hand.
 
 ## Adding a slice
 
 1. Read `LLM_REFERENCE.md` slice exports + `orion/plans/004-mimber-timber-audit.md` if available.
-2. Edit `src/*.js` (ESM `type:module`), keep frozen `assets/timber.js.liquid` + `timber.human.js` (496L) untouched.
-3. `go run ./cmd/mimber build` (esbuild → `dist/timber.{esm,pkgd}.{js,min.js}` + `dist/theme`), `npx playwright test --grep local` (2 tests), `go vet ./...`, `grep -c jQuery dist/theme/assets/timber.js` → 0.
-4. Update `AGENTS.md` Slice status + File map + `Dist current`, `LLM_REFERENCE.md` slice exports, then commit. Push `vendor/themekit` first if you touched the fork (`oreoorbitz/themekit@<sha>`), then `Mimber`.
+2. Edit `src/*.js` (ESM `type:module`) or `snippets/css-variables.liquid`/`assets/base.css` (vanilla CSS) — keep frozen `assets/timber.js.liquid` + `timber.human.js` (496L) + `timber.scss.liquid` (58K SCSS) as diff reference.
+3. `go run ./cmd/mimber build` (esbuild → `dist/timber.{esm,pkgd}.{js,min.js}` + `dist/{global,product,collection,customer,cart}.min.js` + `dist/theme`), `npm run check` (`eslint`/`typecheck`/`build:js` + `lint:css`), `npx playwright test --grep local` (2 tests) + `npx vitest run` (12 tests: `shopify-api-locale`), `go vet ./...`, `grep -c jQuery dist/theme/assets/timber.js` → 0, `grep -c "base.css" dist/theme/layout/theme.liquid` → 1.
+4. Update `AGENTS.md` Slice status + File map + `Dist current`, `LLM_REFERENCE.md` slice exports, `README.md` slice table, then commit. Push `vendor/themekit` first if you touched the fork (`oreoorbitz/themekit@<sha>`), then `Mimber`.
 
 ## Preview harness
 

@@ -32,7 +32,7 @@ $gutter: 30px;
     content: "";
     display: table;
     clear: both; }
-  *zoom: 1;
+  // *zoom removed (IE6/7) — evergreen
 }
 
 @mixin clearfix() {
@@ -40,14 +40,10 @@ $gutter: 30px;
     content: "";
     display: table;
     clear: both; }
-  *zoom: 1;
+  // *zoom removed (IE6/7) — evergreen
 }
 
 @mixin prefix($property, $value) {
-  -webkit-#{$property}: #{$value};
-  -moz-#{$property}: #{$value};
-  -ms-#{$property}: #{$value};
-  -o-#{$property}: #{$value};
   #{$property}: #{$value};
 }
 
@@ -79,7 +75,6 @@ header, nav, section, article, aside, footer {
   padding: ($gutter * 2) 0;
   font-size: 1em;
   text-align: center;
-  -webkit-animation: fadein 0.5s ease-in-out both 0.4s;
   animation: fadein 0.5s ease-in-out both 0.4s;
 }
 
@@ -88,7 +83,6 @@ header, nav, section, article, aside, footer {
 }
 
 .giftcard {
-  -webkit-animation: slideup 0.8s ease-in-out;
   animation: slideup 0.8s ease-in-out
 }
 
@@ -97,7 +91,6 @@ header, nav, section, article, aside, footer {
   border-radius: 4px;
   border: 1px solid darken($colorGiftBorder, 5%);
   padding: 1em;
-  -webkit-animation: container-slide 0.8s ease-in-out;
   animation: container-slide 0.8s ease-in-out
 }
 
@@ -107,7 +100,6 @@ header, nav, section, article, aside, footer {
   color: $colorGiftText;
   border: 1px solid darken($colorGiftBorder, 5%);
   border-radius: 3px;
-  -webkit-animation: cardslide 0.8s ease-in-out;
   animation: cardslide 0.8s ease-in-out;
 }
 
@@ -203,7 +195,7 @@ header, nav, section, article, aside, footer {
   padding: .5em;
   border-radius: 4px;
   max-width: 450px;
-  -webkit-box-shadow: 0 0 0 1px rgba(0,0,0,0.1);
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.1);
   box-shadow: 0 0 0 1px rgba(0,0,0,0.1);
 
   .giftcard__code--small & {
@@ -259,7 +251,6 @@ header, nav, section, article, aside, footer {
   color: #fff;
   text-align: center;
   white-space: nowrap;
-  -webkit-animation: popup 0.5s ease-in-out both 0.7s;
   animation: popup 0.5s ease-in-out both 0.7s;
 
   &:before {
@@ -361,7 +352,6 @@ header, nav, section, article, aside, footer {
 .giftcard__footer {
   text-align: center;
   padding: ($gutter * 2) 0;
-  -webkit-animation: fadein 0.5s ease-in-out both 0.4s;
   animation: fadein 0.5s ease-in-out both 0.4s
 }
 
@@ -373,7 +363,6 @@ header, nav, section, article, aside, footer {
     margin: 0 auto $gutter;
   }
 }
-
 
 /*============================================================================
   #Media Queries
@@ -436,14 +425,12 @@ header, nav, section, article, aside, footer {
   }
 }
 
-
 /*================ Small height ================*/
 @media screen and (max-height: 800px) {
   .header-logo img {
     max-height: 90px;
   }
 }
-
 
 /*============================================================================
   #Print Styles
@@ -504,176 +491,55 @@ header, nav, section, article, aside, footer {
 /*============================================================================
   #Keyframe Animations
 ==============================================================================*/
-@-webkit-keyframes slideup {
-  0% {
-    opacity: 0;
-    -webkit-transform: translateY(2000px) rotate(10deg)
-  }
-
-  60% {
-    opacity: 1;
-    -webkit-transform: translateY(-30px)
-  }
-
-  80% {
-    -webkit-transform: translateY(10px)
-  }
-
-  100% {
-    -webkit-transform: translateY(0) rotate(0deg)
-  }
-}
-
-@-ms-keyframes slideup {
-  0% {
-    opacity: 0;
-    -webkit-transform: translateY(2000px) rotate(10deg)
-  }
-
-  60% {
-    opacity: 1;
-    -webkit-transform: translateY(-30px)
-  }
-
-  80% {
-    -webkit-transform: translateY(10px)
-  }
-
-  100% {
-    -webkit-transform: translateY(0) rotate(0deg)
-  }
-}
 
 @keyframes slideup {
   0% {
     opacity: 0;
-    -webkit-transform: translateY(2000px) rotate(10deg)
+    transform: translateY(2000px) rotate(10deg)
   }
 
   60% {
     opacity: 1;
-    -webkit-transform: translateY(-30px)
+    transform: translateY(-30px)
   }
 
   80% {
-    -webkit-transform: translateY(10px)
+    transform: translateY(10px)
   }
 
   100% {
-    -webkit-transform: translateY(0) rotate(0deg)
-  }
-}
-
-@-webkit-keyframes popup {
-  0% {
-    opacity: 0;
-    -webkit-transform: translateY(30px)
-  }
-
-  60% {
-    opacity: 1;
-    -webkit-transform: translateY(-10px)
-  }
-
-  80% {
-    -webkit-transform: translateY(2px)
-  }
-
-  100% {
-    -webkit-transform: translateY(0)
-  }
-}
-
-@-ms-keyframes popup {
-  0% {
-    opacity: 0;
-    -webkit-transform: translateY(30px)
-  }
-
-  60% {
-    opacity: 1;
-    -webkit-transform: translateY(-10px)
-  }
-
-  80% {
-    -webkit-transform: translateY(2px)
-  }
-
-  100% {
-    -webkit-transform: translateY(0)
+    transform: translateY(0) rotate(0deg)
   }
 }
 
 @keyframes popup {
   0% {
     opacity: 0;
-    -webkit-transform: translateY(30px)
+    transform: translateY(30px)
   }
 
   60% {
     opacity: 1;
-    -webkit-transform: translateY(-10px)
+    transform: translateY(-10px)
   }
 
   80% {
-    -webkit-transform: translateY(2px)
+    transform: translateY(2px)
   }
 
   100% {
-    -webkit-transform: translateY(0)
-  }
-}
-
-@-webkit-keyframes container-slide {
-  0% {
-    opacity: 0;
-    -webkit-transform: rotate(0deg)
-  }
-
-  100% {
-    -webkit-transform: rotate(0deg)
-  }
-}
-
-@-ms-keyframes container-slide {
-  0% {
-    opacity: 0;
-    -webkit-transform: rotate(0deg)
-  }
-
-  100% {
-    -webkit-transform: rotate(0deg)
+    transform: translateY(0)
   }
 }
 
 @keyframes container-slide {
   0% {
     opacity: 0;
-    -webkit-transform: rotate(0deg)
+    transform: rotate(0deg)
   }
 
   100% {
-    -webkit-transform: rotate(0deg)
-  }
-}
-
-@-webkit-keyframes fadein {
-  0% {
-    opacity: 0
-  }
-
-  100% {
-    opacity: 100
-  }
-}
-
-@-ms-keyframes fadein {
-  0% {
-    opacity: 0
-  }
-
-  100% {
-    opacity: 100
+    transform: rotate(0deg)
   }
 }
 

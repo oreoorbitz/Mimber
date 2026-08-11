@@ -58,7 +58,7 @@
         {% comment %}
           ID addToCartForm is a selector for the ajax cart plugin
         {% endcomment %}
-        <form action="/cart/add" method="post" enctype="multipart/form-data" id="AddToCartForm" class="form-vertical">
+        <form action="{{ routes.root_url }}cart/add" method="post" enctype="multipart/form-data" id="AddToCartForm" class="form-vertical">
 
           {% comment %}
             Add product variants as a dropdown.

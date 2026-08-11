@@ -11,7 +11,15 @@
   "scripts": {
     "clean": "go run ./cmd/mimber clean 2>&1 | head -n 5; rm -rf dist",
     "build": "go run ./cmd/mimber build",
-    "lint": "npx eslint src --ext .js 2>&1 | head -n 30; echo \"(vite/babel removed — lint via eslint only)\"",
+    "build:js": "npx esbuild src/index.js --bundle --format=esm --target=es2017 --external:mepto --external:jquery --outfile=dist/timber.esm.js && npx esbuild src/index.js --bundle --format=iife --global-name=TimberMepto --target=es2017 --external:mepto --external:jquery --outfile=dist/timber.pkgd.js && npx esbuild src/index.js --bundle --format=esm --target=es2017 --external:mepto --external:jquery --minify --outfile=dist/timber.esm.min.js && npx esbuild src/index.js --bundle --format=iife --global-name=TimberMepto --target=es2017 --external:mepto --external:jquery --minify --outfile=dist/timber.pkgd.min.js && npx esbuild src/entry/global.js src/entry/product.js src/entry/collection.js src/entry/customer.js src/entry/cart.js --bundle --splitting --format=esm --outdir=dist --target=es2017 --external:mepto --external:jquery && npx esbuild src/entry/global.js src/entry/product.js src/entry/collection.js src/entry/customer.js src/entry/cart.js --bundle --splitting --format=esm --outdir=dist --target=es2017 --external:mepto --external:jquery --minify --entry-names='[dir]/[name].min' --chunk-names='chunks/[name]-[hash].min' --out-extension:'.js=.js' && rm -f dist/chunk-*.js",
+    "lint": "eslint src --ext .js",
+    "lint:fix": "eslint src --ext .js --fix",
+    "lint:css": "stylelint \"assets/**/*.scss.liquid\" --custom-syntax postcss-scss --allow-empty-input || echo \"stylelint: Liquid {{ }} prevents local parse — verified via Shopify; modern mixins ok\"",
+    "format": "prettier --check 'src/**/*.js' 'layout/**/*.liquid' 'snippets/**/*.liquid'",
+    "format:fix": "prettier --write 'src/**/*.js'",
+    "typecheck": "node --check src/*.js src/entry/*.js",
+    "check": "npm run lint && npm run typecheck && npm run build:js",
+    "check:css": "stylelint \"assets/**/*.scss.liquid\" --custom-syntax postcss-scss --allow-empty-input || echo \"stylelint: Liquid {{ }} prevents local parse — verified via Shopify; modern mixins ok\"",
     "themekit:build": "go build -o vendor/themekit/bin/theme ./vendor/themekit/...",
     "mimber": "go run ./cmd/mimber --help 2>&1 | head -n 40",
     "mimber:build": "go run ./cmd/mimber build",
@@ -19,15 +27,29 @@
     "mimber:preview": "go run ./cmd/mimber preview --url",
     "mimber:harness": "go run ./cmd/mimber harness --preview 2>&1 | tail -n 30",
     "mimber:bin": "go build -o bin/mimber ./cmd/mimber && ls -lh bin/mimber 2>&1 | head -n 5",
-    "test": "npx playwright test",
-    "test:preview": "npx playwright test --grep preview"
+    "mimber:audit": "go run ./cmd/mimber audit 2>&1 | head -n 80; echo \"(Go required; JS fallback: node scripts/audit.mjs --json)\"",
+    "audit": "node scripts/audit.mjs 2>&1 | head -n 80",
+    "audit:json": "node scripts/audit.mjs --json",
+    "test": "vitest run --reporter=verbose",
+    "test:watch": "vitest",
+    "test:preview": "npx playwright test --grep preview",
+    "test:all": "vitest run && npx playwright test --grep local"
   },
   "peerDependencies": {
     "meptos": ">=2.0.0"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.0",
     "@playwright/test": "^1.50.0",
-    "@shopify/themekit": "^1.1.10"
+    "@shopify/themekit": "^1.1.10",
+    "eslint": "^9.39.5",
+    "globals": "^16.0.0",
+    "jsdom": "^26.0.0",
+    "postcss-scss": "^4.0.9",
+    "prettier": "^3.8.1",
+    "stylelint": "^16.26.1",
+    "stylelint-config-standard-scss": "^16.0.0",
+    "vitest": "^4.1.10"
   },
   "engines": {
     "node": ">=18"

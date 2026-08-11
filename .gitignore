@@ -51,3 +51,6 @@ grunt-config.json
 config.yml
 /_site
 assets/logo.png
+# Mimber audit artifacts (generated per-client)
+audit.json
+audit.md

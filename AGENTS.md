@@ -63,6 +63,12 @@ Do not guess past the router — open the doc. `AGENTS.md` stays short.
 | **6 — ajax-cart** | `ajax-cart.js.liquid` 563 | `$.ajax`/`Deferred` + `Handlebars` cart rendering | **Done** (14 modules, `dist 63.8K/32.1K min` → `67.2K/34.8K` with slice 7) | `fetch` vs `$.ajax`, `FormData`+`URLSearchParams`, `DocumentFragment`, `CustomEvent` |
 | **7 — handlebars + theme liquid** | `handlebars.min.js` 46K + `theme.liquid` + `ajax-cart-template` + `collection-sorting`/`product` | **Done** (14 modules, `dist 67.2K/34.8K min`, **save 46K + 1 req**, 0 `jQuery` in theme) | `native <template>` vs `Handlebars.compile`, `mepto.js` vs `jquery/1.12.4`, `URLSearchParams` vs `jQuery.param`, `DOMContentLoaded` vs `jQuery(function` |
 | **8 — query optimization** | `cache.js`/`product-page.js`/`drawers.js`/`accessible-nav`/`utils` | **Done** (14 mods, `dist 65K/34.7K min`, per **measurethat #16434** `closest 13.8M vs querySelector 16.1M Ops/sec`) | `getElementById` for `#id` (fastest), `getElementsByClassName`/`getElementsByTagName` for `.class`/`a`, QSA only for attribute/`[data-*]`, `closest` only for delegation (kept for `ajaxcart__qty-adjust`, else `parentElement` walk) |
+| **9 — per-template splitting** | `src/entry/{global,product,collection,customer,cart}.js` + `layout/theme.liquid` | **Done** (5 entries, ESM `splitting`, `target es2017≈last3`, HTTP/2 multiplex, each **<14KB gzip** — `global 2.8K`/`product 0.9K`/`collection 0.3K`/`customer 0.3K`/`cart 4.1K` + shared chunks `1.2K+0.5K+0.4K`; per-page `global 4.9K`/`product 5.8K`/`cart+global 9.0K` gzip, legacy `timber.pkgd.min.js 8.7K` kept) | `type="module"` per-template `{{ 'global.js' | asset_url }}`, `chunks/` shared, `esbuild` `splitting:true` `EntryNames`/`ChunkNames`, fallback `timber.js` IIFE |
+| **10 — quality gates** | `eslint.config.js` + `.prettierrc.json` + `vitest.config.js` + `tests/unit/*` | **Done** (`eslint 9` flat `globals browser/node`, `prettier 3` semi:false, `vitest 4` `jsdom`, 6 tests 12 cases incl locale-aware, `npm run check=lint+typecheck+build:js`, `test:all=vitest+playwright --grep local`) | `no-unused-vars caughtErrorsIgnorePattern ^_`, `no-empty allowEmptyCatch`, `playwright testMatch *.spec.js testIgnore unit/` |
+| **11 — locale-aware Ajax** | `src/shopify-api.js` + `src/ajax-cart.js` + `layout/theme.liquid` + `templates/product.liquid` | **Done** (`Shopify.routes.root` `{{ routes.root_url }}` per https://shopify.dev/docs/api/ajax/reference/cart#get--locale-cartjs, `cartUrl(path)` helper, `formSelector` `*=` for `/{locale}/cart/add`, 4 endpoints locale-aware, `tests/unit/shopify-api-locale.test.js` 4 cases) | `getShopifyRoot()` fallback `/`, `fetch(cartUrl('/cart.js'))` |
+| **12 — CSS modernize (evergreen) S1** | `assets/timber.scss.liquid` + `assets/gift-card.scss.liquid` | **Done** (remove `prefixer` mixin `ms/webkit/moz/o`, `*zoom:1` IE6/7, `-webkit/-moz` appearance→`appearance`, `-webkit-overflow-scrolling`/`-webkit-text-size-adjust` removed, `promote-layer` `translateZ(0)`→`will-change` only, `gift-card` dedupe `-webkit-animation`/`@-webkit-keyframes`, add `:root` CSS vars `--color-primary` etc, `stylelint 16` + `postcss-scss`) | `transform`/`user-select`/`backface-visibility` native, `:root { --color-* : {{ settings.* }} }` |
+| **13 — CSS vanilla (Dawn/Horizon)** | `assets/base.css` + `assets/gift-card.css` (vanilla, no SCSS) + `snippets/css-variables.liquid` | **Done** (Liquid vars moved to inline `{% render 'css-variables' %}` → `{% style %}:root{--color-primary:{{ settings.color_primary }}}`, SCSS compiled via `npx sass` with placeholder `{{ }}`→`#hex` then `hex→var(--color-*)`, vanilla `base.css 66K/12.1K gzip` + `gift-card.css 9.7K`, `layout/theme.liquid` now `base.css` + `css-variables` per https://github.com/Shopify/dawn + https://github.com/Shopify/horizon, `templates/gift_card.liquid` updated, legacy `timber.scss.css` kept commented) | `{{ 'base.css' | asset_url | stylesheet_tag }}` + `{% render 'css-variables' %}` vanilla CSS |
+| **14 — audit tool (Go + JS starter)** | `vendor/themekit/cmd/mimber/audit.go` + `scripts/audit.mjs` (Cobra `mimber audit`) | **Done** (static analysis 11 rules: `jquery-ajax`/`handlebars`/`locale-fetch`/`css-vanilla`/`splitting`/`vendor-prefix`/`perf-closest`, score 0–100, `audit.json`+`audit.md` for LLM starter per `measurethat #16434` + https://shopify.dev/docs/api/ajax/reference/cart, Go primary + JS fallback `node scripts/audit.mjs --json`, `npm run audit`/`audit:json`/`mimber:audit`, Mimber self-score 94/100 (7 low `closest`)) | `go run ./cmd/mimber audit --json` → `mimber-reference/audit.json` starter prompt |
 
 Update this table when you land a slice — LLM points at this file.
 
@@ -81,7 +87,12 @@ Update this table when you land a slice — LLM points at this file.
 | `assets/timber.human.js` | Prettified backup of `timber.js.liquid` (same 496L, readable) | Readable diff base |
 | `assets/ajax-cart.js.liquid` | Ajax cart 563L — `$.ajax` + `Handlebars` | Diff vs client `ajax-cart.js`/`cart.js` |
 | `snippets/ajax-cart-template.liquid` + `snippets/collection-sorting.liquid` + `templates/product.liquid` | `Handlebars`/`jQuery.param`/`jQuery(function` → native `<template>`/`URLSearchParams`/`DOMContentLoaded` | Diff vs client, remove `handlebars.min.js` script tag |
-| `assets/timber.scss.liquid`, `layout/theme.liquid` (now `mepto.js` vs `jquery/1.12.4`+`modernizr`+`fastclick`), `bower.json` | Styles/vendor/shell — reference only, partly modernized (slice 7: `mepto.js`) | Diff only, remove polyfill tags |
+| `assets/timber.scss.liquid` | SCSS legacy 58K (evergreen S1: `*zoom`/`prefixer` removed) | Keep for diff vs `base.css` |
+| `assets/base.css` | Vanilla CSS 66K (Dawn/Horizon, no SCSS) — `var(--color-*)` via `snippets/css-variables.liquid` `{% style %}` | Vanilla CSS; edit `base.css` + `css-variables` not SCSS |
+| `assets/gift-card.css` | Vanilla 9.7K (from `gift-card.scss.liquid`) | Same pattern |
+| `snippets/css-variables.liquid` | Dawn/Horizon — `{% style %}:root{--color-primary:{{ settings.color_primary }}}` inline | Paste to client `layout/theme.liquid` `<head>` |
+| `layout/theme.liquid` (now `mepto.js` + `base.css` + `css-variables` vs `jquery/1.12.4`+`modernizr`+`fastclick`+`timber.scss.css`) | Styles/vendor/shell — modernized per slices 7,11–13 | Diff vs client; remove `timber.scss.css`/`jquery`/`handlebars` tags, add `base.css` + `css-variables` |
+| `bower.json` | Legacy — removed | — |
 | `src/prepare-transition.js` | Slice 1: Mepto `prepareTransition` + `scheduler` rAF | Copy pattern to client |
 | `src/money-format.js` | Slice 1: `Shopify.formatMoney` hoisted regex | Copy pattern |
 | `src/url.js` | `replaceUrlParam` cached `RegExp` | Reused by `collectionViews` |
@@ -93,14 +104,20 @@ Update this table when you land a slice — LLM points at this file.
 | `src/shopify-api.js` + `src/ajax-cart.js` | Slice 6→7: `ShopifyAPI` (`fetch`+`CustomEvent`), `ajaxCart` (slice 7: native `<template>` **no Handlebars**, `DocumentFragment`) | Copy |
 | `src/scheduler.js` | FastDOM `measure`/`mutate` rAF | Shared by slice 1-6 |
 | `src/mepto.js` | `window.mepto \|\| window.jQuery` getter (`$`) | Shared |
-| `src/index.js` | Assembles `window.timber` legacy names, `DOMContentLoaded` auto-init | Entry |
-| `dist/timber.esm.js` / `dist/timber.pkgd.js` / `dist/timber.pkgd.min.js` | Built artifacts — **`esbuild` Go** `es2017≈last3` `minify` (no Vite/Babel) | Copy `pkgd.min.js` → client `assets/timber.js` |
-| `dist/theme/` | **Shopify 1.0 theme for ThemeKit** — `assets/timber.js` (modern), `layout/theme.liquid`, `config/`, `snippets/`, `templates/` | `go run ./cmd/mimber deploy` → `dist/theme` (`directory: dist/theme` in `config.yml`) |
+| `src/index.js` | Legacy combined 1059L fallback (`window.timber` all) + `src/entry/{global,product,collection,customer,cart}.js` per-template (<14K gzip) | Entry; per-template via `type="module"` `splitting` |
+| `src/shopify-api.js` | Locale-aware `cartUrl()` via `Shopify.routes.root {{ routes.root_url }}` | Keep for locale |
+| `dist/timber.esm.js` / `dist/timber.pkgd.js` / `dist/timber.pkgd.min.js` | Legacy combined 1059L fallback — **`esbuild` Go** `es2017≈last3` `minify` | Copy `pkgd.min.js` → client `assets/timber.js` only if not using splits |
+| `dist/{global,product,collection,customer,cart}.js` + `dist/chunks/` | Split ESM primary (<14K gzip each) | `{{ 'global.js' | asset_url }}` `type="module"` per-template |
+| `assets/base.css` / `assets/gift-card.css` | Vanilla CSS (Dawn/Horizon) — `dist/theme/assets/base.css` synced | Via `{{ 'base.css' | asset_url }}` + `{% render 'css-variables' %}` |
+| `dist/theme/` | **Shopify 1.0 theme for ThemeKit** — `assets/base.css`+`assets/{global,product,...}.js`+`chunks/` (modern), `layout/theme.liquid`, `config/`, `snippets/`, `templates/` | `go run ./cmd/mimber deploy` → `dist/theme` (`directory: dist/theme` in `config.yml`) |
 | `vendor/themekit/` | **Bundled ThemeKit fork** `oreoorbitz/themekit` (Go, 1.0) + `esbuild` (`github.com/evanw/esbuild v0.25`) — `cmd/mimber` | `go build -o bin/mimber ./cmd/mimber` → single Go CLI (JS bundler + ThemeKit) |
 | `config.yml.example` | ThemeKit legacy config (store + `theme_id` + `preview_theme_id`) | `cp config.yml.example config.yml`, fill `x.y` + `z` |
 | `cmd/mimber/main.go` + `vendor/themekit/cmd/mimber/` | **Go orchestrator** `mimber` (`Cobra` + `esbuild` Go) — `build`/`deploy`/`preview`/`harness` | `go run ./cmd/mimber` or `bin/mimber` |
 | `playwright.config.mjs` + `tests/preview.spec.js` | Playwright harness — `_ab=0&_fd=0&_sc=1&preview_theme_id=z` | `go run ./cmd/mimber harness --preview` (full) / `harness` (local) |
-| `package.json` (`type:module`, `browserslist last 3`) | Keep `type:module` for `scripts/build-theme.mjs`; `vite`/`babel` removed (now Go esbuild) | — |
+| `package.json` (`type:module`, `browserslist last 3`) | `esbuild` Go `v0.25` `es2017≈last3` + `splitting`, `eslint@9`/`prettier@3`/`vitest@4`/`stylelint@16` | Quality gates: `npm run check`/`lint:css`/`test:all` + `audit` |
+| `vendor/themekit/cmd/mimber/audit.go` + `scripts/audit.mjs` | `mimber audit` (Go Cobra, 394L) + JS fallback — 11 rules, score 0–100, `audit.json`/`audit.md` | `go run ./cmd/mimber audit --json` or `node scripts/audit.mjs --json` → LLM starter JSON |
+| `eslint.config.js` / `.prettierrc` / `.stylelintrc` / `vitest.config.js` / `playwright.config.mjs` | Quality gates — `eslint flat` `vitest jsdom 12 tests` `playwright 2 local` | `npm run lint`/`test`/`test:all` |
+| `tests/unit/*.test.js` | Vitest jsdom — `money-format`, `url`, `scheduler`, `cache`, `shopify-api` + `shopify-api-locale` | `npx vitest run` |
 | `README.md` | Upstream Timber README (deprecated notice) — not orchestrator | Ignore |
 | `spec/` | Timber i18n Ruby tests — not JS modernization | Ignore |
 
@@ -155,7 +172,7 @@ node --check src/*.js
 grep -c "jQuery" dist/theme/assets/timber.js  # → 0 (comments only in frozen assets/timber.js.liquid)
 ```
 
-Dist current (slice 8 query-opt): `timber.esm.js 65K` / `timber.pkgd.js 68K` / `timber.pkgd.min.js 34.7K` (`10.4K gzip`). Slices 1-8 complete (query-opt per **measurethat #16434**: `byId`/`byClass`/`byTag` vs QSA, `closest` only for delegation). Save still **46K+1 req** (handlebars deleted).
+Dist current (slice 13 vanilla): `timber.pkgd.min.js 27K/8.7K` legacy; split `global 2.8K`/`product 0.9K`/`collection 0.3K`/`customer 0.3K`/`cart 4.1K` + chunks `1.2K+0.5K+0.4K` per-page `global 4.9K`/`product 5.8K`/`cart+global 9.0K` (<14K); `base.css 66K/12.1K gzip` vanilla (from `timber.scss.liquid` 58K), `gift-card.css 9.7K`, `css-variables` inline; slices 0–13 complete — JS + CSS vanilla done.
 
 ---
 

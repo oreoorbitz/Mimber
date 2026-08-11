@@ -4,7 +4,16 @@ import { prepareTransition, attachPrepareTransition } from './prepare-transition
 import { installFormatMoney } from './money-format.js'
 import { replaceUrlParam } from './url.js'
 import { cacheSelectors } from './cache.js'
-import { getHash, switchImage, mobileNavToggle, productImageSwitch, responsiveVideos, collectionViews, loginForms, resetPasswordSuccess } from './utils.js'
+import {
+  getHash,
+  switchImage,
+  mobileNavToggle,
+  productImageSwitch,
+  responsiveVideos,
+  collectionViews,
+  loginForms,
+  resetPasswordSuccess,
+} from './utils.js'
 import { productPage } from './product-page.js'
 import { accessibleNav } from './accessible-nav.js'
 import { Drawer, drawersInit } from './drawers.js'
@@ -36,8 +45,12 @@ if (typeof window !== 'undefined') {
   window.timber.init = () => {
     // FastClick removed (evergreen); keep rest
     cacheSelectors(window.timber)
-    try { accessibleNav(window.timber) } catch (_) {}
-    try { drawersInit(window.timber) } catch (_) {}
+    try {
+      accessibleNav(window.timber)
+    } catch (_) {}
+    try {
+      drawersInit(window.timber)
+    } catch (_) {}
     mobileNavToggle(window.timber)
     productImageSwitch(window.timber)
     responsiveVideos()
@@ -45,10 +58,31 @@ if (typeof window !== 'undefined') {
     loginForms(window.timber)
   }
   // auto-init on DOM ready (replaces $(timber.init))
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => window.timber.init())
+  if (document.readyState === 'loading')
+    document.addEventListener('DOMContentLoaded', () => window.timber.init())
   else queueMicrotask(() => window.timber.init())
 }
 
-export { prepareTransition, replaceUrlParam, cacheSelectors, getHash, switchImage, mobileNavToggle, productImageSwitch, responsiveVideos, collectionViews, loginForms, resetPasswordSuccess, productPage, accessibleNav, Drawer, drawersInit, ajaxCart, _ShopifyAPI as ShopifyAPI }
-// eslint-disable-next-line no-undef
-export const ShopifyFormatMoney = typeof Shopify !== 'undefined' ? Shopify.formatMoney : undefined
+export {
+  prepareTransition,
+  replaceUrlParam,
+  cacheSelectors,
+  getHash,
+  switchImage,
+  mobileNavToggle,
+  productImageSwitch,
+  responsiveVideos,
+  collectionViews,
+  loginForms,
+  resetPasswordSuccess,
+  productPage,
+  accessibleNav,
+  Drawer,
+  drawersInit,
+  ajaxCart,
+  _ShopifyAPI as ShopifyAPI,
+}
+export const ShopifyFormatMoney =
+  typeof window !== 'undefined' && typeof window.Shopify !== 'undefined'
+    ? window.Shopify.formatMoney
+    : undefined

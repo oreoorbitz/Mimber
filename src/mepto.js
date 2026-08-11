@@ -5,4 +5,4 @@ export const $ = (() => {
   }
   return null
 })()
-export const hasMepto = () => !!($)
+export const hasMepto = () => !!$

@@ -13,7 +13,7 @@ const I18N = {
 }
 
 let settings = {
-  formSelector: 'form[action^="/cart/add"]',
+  formSelector: 'form[action*="/cart/add"]',
   cartContainer: '#CartContainer',
   addToCartSelector: 'input[type="submit"]',
   cartCountSelector: null,
@@ -43,7 +43,10 @@ const updateCountPrice = (cart) => {
     if (cartCountSelector) {
       const el = unwrap(cartCountSelector) || cartCountSelector
       // cartCountSelector may be NodeList/array
-      const list = cartCountSelector.length !== undefined && cartCountSelector.tagName === undefined ? [...cartCountSelector] : [cartCountSelector]
+      const list =
+        cartCountSelector.length !== undefined && cartCountSelector.tagName === undefined
+          ? [...cartCountSelector]
+          : [cartCountSelector]
       list.forEach((node) => {
         const n = unwrap(node) || node
         if (!n || !n.textContent === undefined) return
@@ -51,13 +54,20 @@ const updateCountPrice = (cart) => {
         n.classList.remove('hidden-count')
         if (cart.item_count === 0) n.classList.add('hidden-count')
         // compat: .html() fallback
-        if (n.innerHTML !== undefined && typeof cart.item_count !== 'undefined') n.innerHTML = String(cart.item_count)
+        if (n.innerHTML !== undefined && typeof cart.item_count !== 'undefined')
+          n.innerHTML = String(cart.item_count)
       })
       void el
     }
     if (cartCostSelector) {
-      const fmt = window.Shopify && window.Shopify.formatMoney ? window.Shopify.formatMoney(cart.total_price, settings.moneyFormat) : String(cart.total_price)
-      const list = cartCostSelector.length !== undefined && cartCostSelector.tagName === undefined ? [...cartCostSelector] : [cartCostSelector]
+      const fmt =
+        window.Shopify && window.Shopify.formatMoney
+          ? window.Shopify.formatMoney(cart.total_price, settings.moneyFormat)
+          : String(cart.total_price)
+      const list =
+        cartCostSelector.length !== undefined && cartCostSelector.tagName === undefined
+          ? [...cartCostSelector]
+          : [cartCostSelector]
       list.forEach((node) => {
         const n = unwrap(node) || node
         if (!n) return
@@ -69,14 +79,27 @@ const updateCountPrice = (cart) => {
 
 const formOverride = () => {
   if (!formContainer || !formContainer.length) return
-  const forms = formContainer.length !== undefined && formContainer.tagName === undefined ? [...formContainer] : [formContainer]
+  const forms =
+    formContainer.length !== undefined && formContainer.tagName === undefined
+      ? [...formContainer]
+      : [formContainer]
   forms.forEach((form) => {
     const node = unwrap(form) || form
     if (!node || !node.addEventListener) return
     node.addEventListener('submit', (evt) => {
       evt.preventDefault()
-      const adds = addToCart ? (addToCart.length !== undefined && addToCart.tagName === undefined ? [...addToCart] : [addToCart]) : []
-      adds.forEach((a) => { const n = unwrap(a) || a; if (n && n.classList) { n.classList.remove('is-added'); n.classList.add('is-adding') } })
+      const adds = addToCart
+        ? addToCart.length !== undefined && addToCart.tagName === undefined
+          ? [...addToCart]
+          : [addToCart]
+        : []
+      adds.forEach((a) => {
+        const n = unwrap(a) || a
+        if (n && n.classList) {
+          n.classList.remove('is-added')
+          n.classList.add('is-adding')
+        }
+      })
       qq('.qty-error').forEach((el) => el.remove())
       ShopifyAPI.addItemFromForm(evt.target, itemAddedCallback, itemErrorCallback)
     })
@@ -84,21 +107,41 @@ const formOverride = () => {
 }
 
 const itemAddedCallback = () => {
-  const adds = addToCart ? (addToCart.length !== undefined && addToCart.tagName === undefined ? [...addToCart] : [addToCart]) : []
-  adds.forEach((a) => { const n = unwrap(a) || a; if (n && n.classList) { n.classList.remove('is-adding'); n.classList.add('is-added') } })
+  const adds = addToCart
+    ? addToCart.length !== undefined && addToCart.tagName === undefined
+      ? [...addToCart]
+      : [addToCart]
+    : []
+  adds.forEach((a) => {
+    const n = unwrap(a) || a
+    if (n && n.classList) {
+      n.classList.remove('is-adding')
+      n.classList.add('is-added')
+    }
+  })
   ShopifyAPI.getCart(cartUpdateCallback)
 }
 
 const itemErrorCallback = (xhr) => {
   let data = {}
-  try { data = JSON.parse(xhr.responseText || '{}') } catch (_) {}
-  const adds = addToCart ? (addToCart.length !== undefined && addToCart.tagName === undefined ? [...addToCart] : [addToCart]) : []
-  adds.forEach((a) => { const n = unwrap(a) || a; if (n && n.classList) n.classList.remove('is-adding', 'is-added') })
+  try {
+    data = JSON.parse(xhr.responseText || '{}')
+  } catch (_) {}
+  const adds = addToCart
+    ? addToCart.length !== undefined && addToCart.tagName === undefined
+      ? [...addToCart]
+      : [addToCart]
+    : []
+  adds.forEach((a) => {
+    const n = unwrap(a) || a
+    if (n && n.classList) n.classList.remove('is-adding', 'is-added')
+  })
   if (data.message && data.status == 422) {
     const errDiv = document.createElement('div')
     errDiv.className = 'errors qty-error'
     errDiv.textContent = data.description || data.message
-    const fc = unwrap(formContainer) || (formContainer && formContainer[0] ? formContainer[0] : null)
+    const fc =
+      unwrap(formContainer) || (formContainer && formContainer[0] ? formContainer[0] : null)
     const anchor = fc && fc.parentNode ? fc : document.body
     if (fc && fc.after) fc.after(errDiv)
     else anchor.appendChild(errDiv)
@@ -136,7 +179,10 @@ const buildCart = (cart) => {
       cartCallback(cart)
       return
     }
-    const fmt = (c) => (window.Shopify && window.Shopify.formatMoney ? window.Shopify.formatMoney(c, settings.moneyFormat) : String(c))
+    const fmt = (c) =>
+      window.Shopify && window.Shopify.formatMoney
+        ? window.Shopify.formatMoney(c, settings.moneyFormat)
+        : String(c)
     const frag = document.createDocumentFragment()
     // clone the template shell once (form + footer)
     const shell = tmpl.content.cloneNode(true)
@@ -149,24 +195,42 @@ const buildCart = (cart) => {
       if (cart.total_discount === 0) savingsEl.style.display = 'none'
       else {
         const tpl = (settings.i18n && settings.i18n.savingsHtml) || I18N.savingsHtml
-        savingsEl.querySelector('em').textContent = tpl.replace('[savings]', fmt(cart.total_discount))
+        savingsEl.querySelector('em').textContent = tpl.replace(
+          '[savings]',
+          fmt(cart.total_discount)
+        )
         savingsEl.style.display = ''
       }
     }
     if (noteEl) noteEl.value = cart.note || ''
 
     cart.items.forEach((cartItem, idx) => {
-      let prodImg = '//cdn.shopify.com/s/assets/admin/no-image-medium-cc9732cb976dd349a0df1d39816fbcc7.gif'
-      if (cartItem.image != null) prodImg = cartItem.image.replace(/(\.[^.]*)$/, '_small$1').replace('http:', '')
+      let prodImg =
+        '//cdn.shopify.com/s/assets/admin/no-image-medium-cc9732cb976dd349a0df1d39816fbcc7.gif'
+      if (cartItem.image != null)
+        prodImg = cartItem.image.replace(/(\.[^.]*)$/, '_small$1').replace('http:', '')
       const line = idx + 1
       const row = document.createElement('div')
       row.className = 'ajaxcart__product'
       const discountsApplied = cartItem.line_price !== cartItem.original_line_price
-      const propsHtml = cartItem.properties ? Object.entries(cartItem.properties).map(([k, v]) => v ? `<span class="ajaxcart__product-meta">${k}: ${v}</span>` : '').join('') : ''
-      const discountsHtml = discountsApplied ? `<small class="ajaxcart-item__price-strikethrough"><s>${fmt(cartItem.original_line_price)}</s></small><br><span>${fmt(cartItem.line_price)}</span>` : `<span>${fmt(cartItem.line_price)}</span>`
-      const eachDiscounts = discountsApplied && cartItem.discounts && cartItem.discounts.length ? `<div class="grid--full display-table"><div class="grid__item text-right">${cartItem.discounts.map(d => `<small class="ajaxcart-item__discount">${d.title}</small><br>`).join('')}</div></div>` : ''
-      const vendorHtml = cartItem.vendor ? `<span class="ajaxcart__product-meta">${cartItem.vendor}</span>` : ''
-      const variationHtml = cartItem.variant_title ? `<span class="ajaxcart__product-meta">${cartItem.variant_title}</span>` : ''
+      const propsHtml = cartItem.properties
+        ? Object.entries(cartItem.properties)
+            .map(([k, v]) => (v ? `<span class="ajaxcart__product-meta">${k}: ${v}</span>` : ''))
+            .join('')
+        : ''
+      const discountsHtml = discountsApplied
+        ? `<small class="ajaxcart-item__price-strikethrough"><s>${fmt(cartItem.original_line_price)}</s></small><br><span>${fmt(cartItem.line_price)}</span>`
+        : `<span>${fmt(cartItem.line_price)}</span>`
+      const eachDiscounts =
+        discountsApplied && cartItem.discounts && cartItem.discounts.length
+          ? `<div class="grid--full display-table"><div class="grid__item text-right">${cartItem.discounts.map((d) => `<small class="ajaxcart-item__discount">${d.title}</small><br>`).join('')}</div></div>`
+          : ''
+      const vendorHtml = cartItem.vendor
+        ? `<span class="ajaxcart__product-meta">${cartItem.vendor}</span>`
+        : ''
+      const variationHtml = cartItem.variant_title
+        ? `<span class="ajaxcart__product-meta">${cartItem.variant_title}</span>`
+        : ''
       row.innerHTML = `<div class="ajaxcart__row" data-line="${line}"><div class="grid"><div class="grid__item one-quarter"><a href="${cartItem.url}" class="ajaxcart__product-image"><img src="${prodImg}" alt=""></a></div><div class="grid__item three-quarters"><p><a href="${cartItem.url}" class="ajaxcart__product-name">${cartItem.product_title}</a>${variationHtml}${propsHtml}${vendorHtml}</p><div class="grid--full display-table"><div class="grid__item display-table-cell one-half"><div class="ajaxcart__qty"><button type="button" class="ajaxcart__qty-adjust ajaxcart__qty--minus icon-fallback-text" data-id="${cartItem.key}" data-qty="${cartItem.quantity - 1}" data-line="${line}"><span class="icon icon-minus" aria-hidden="true"></span><span class="visually-hidden">Reduce</span></button><input type="text" name="updates[]" class="ajaxcart__qty-num" value="${cartItem.quantity}" min="0" data-id="${cartItem.key}" data-line="${line}" aria-label="quantity" pattern="[0-9]*"><button type="button" class="ajaxcart__qty-adjust ajaxcart__qty--plus icon-fallback-text" data-id="${cartItem.key}" data-line="${line}" data-qty="${cartItem.quantity + 1}"><span class="icon icon-plus" aria-hidden="true"></span><span class="visually-hidden">Increase</span></button></div></div><div class="grid__item display-table-cell one-half text-right">${discountsHtml}</div>${eachDiscounts}</div></div></div></div>`
       itemsRoot.appendChild(row)
     })
@@ -182,7 +246,8 @@ const cartCallback = (cart) => {
     b.classList.remove('drawer--is-loading')
   })
   triggerBody('afterCartLoad.ajaxCart', cart)
-  if (window.Shopify && window.Shopify.StorefrontExpressButtons) window.Shopify.StorefrontExpressButtons.initialize()
+  if (window.Shopify && window.Shopify.StorefrontExpressButtons)
+    window.Shopify.StorefrontExpressButtons.initialize()
 }
 
 const adjustCart = () => {
@@ -194,11 +259,16 @@ const adjustCart = () => {
     if (isUpdating) return
     const line = target.getAttribute('data-line') || target.dataset.line
     // qty input is sibling -> parentElement.querySelector is scoped, faster than document QSA
-    const qtyEl = target.parentElement ? target.parentElement.querySelector('.ajaxcart__qty-num') : null
+    const qtyEl = target.parentElement
+      ? target.parentElement.querySelector('.ajaxcart__qty-num')
+      : null
     let qty = qtyEl ? parseInt(qtyEl.value.replace(/\D/g, ''), 10) : 0
     qty = validateQty(qty)
     if (target.classList.contains('ajaxcart__qty--plus')) qty += 1
-    else { qty -= 1; if (qty <= 0) qty = 0 }
+    else {
+      qty -= 1
+      if (qty <= 0) qty = 0
+    }
     if (line) updateQuantity(line, qty)
     else if (qtyEl) qtyEl.value = String(qty)
   })
@@ -219,7 +289,11 @@ const adjustCart = () => {
   b.addEventListener('focusin', (e) => {
     const target = e.target.closest && e.target.closest('.ajaxcart__qty-adjust')
     if (!target) return
-    setTimeout(() => { try { target.select() } catch (_) {} }, 50)
+    setTimeout(() => {
+      try {
+        target.select()
+      } catch (_) {}
+    }, 50)
   })
 
   const updateQuantity = (line, qty) => {
@@ -269,7 +343,13 @@ const init = (options = {}) => {
   // cartContainer is single
   const cc = q(settings.cartContainer)
   cartContainer = cc || sel(settings.cartContainer)
-  addToCart = formContainer ? (mepto ? (formContainer.find ? formContainer.find(settings.addToCartSelector) : qq(settings.addToCartSelector, unwrap(formContainer) || document)) : qq(settings.addToCartSelector, unwrap(formContainer) || document)) : null
+  addToCart = formContainer
+    ? mepto
+      ? formContainer.find
+        ? formContainer.find(settings.addToCartSelector)
+        : qq(settings.addToCartSelector, unwrap(formContainer) || document)
+      : qq(settings.addToCartSelector, unwrap(formContainer) || document)
+    : null
   if (mepto) {
     cartCountSelector = settings.cartCountSelector ? mepto(settings.cartCountSelector) : null
     cartCostSelector = settings.cartCostSelector ? mepto(settings.cartCostSelector) : null
@@ -283,7 +363,11 @@ const init = (options = {}) => {
 
   if (settings.enableQtySelectors) qtySelectors()
 
-  const adds = addToCart ? (addToCart.length !== undefined && addToCart.tagName === undefined ? [...addToCart] : [addToCart]) : []
+  const adds = addToCart
+    ? addToCart.length !== undefined && addToCart.tagName === undefined
+      ? [...addToCart]
+      : [addToCart]
+    : []
   if (!settings.disableAjaxCart && adds.length) formOverride()
 
   adjustCart()
@@ -304,8 +388,13 @@ const createQtySelectors = () => {
     const currentQty = el.value
     const clone = tmpl.content.cloneNode(true)
     const qtyInput = clone.querySelector('[data-ajaxcart-qty-num]')
-    if (qtyInput) { qtyInput.value = currentQty; qtyInput.setAttribute('data-id', el.getAttribute('data-id') || '') }
-    clone.querySelectorAll('[data-ajaxcart-qty-minus],[data-ajaxcart-qty-plus]').forEach((btn) => btn.setAttribute('data-id', el.getAttribute('data-id') || ''))
+    if (qtyInput) {
+      qtyInput.value = currentQty
+      qtyInput.setAttribute('data-id', el.getAttribute('data-id') || '')
+    }
+    clone
+      .querySelectorAll('[data-ajaxcart-qty-minus],[data-ajaxcart-qty-plus]')
+      .forEach((btn) => btn.setAttribute('data-id', el.getAttribute('data-id') || ''))
     const minus = clone.querySelector('[data-ajaxcart-qty-minus]')
     if (minus) minus.setAttribute('data-qty', String(parseInt(currentQty, 10) - 1))
     const plus = clone.querySelector('[data-ajaxcart-qty-plus]')
@@ -332,7 +421,9 @@ const qtySelectors = () => {
       if (inputName) qtyInput.setAttribute('name', inputName)
       if (inputId) qtyInput.setAttribute('id', inputId)
     }
-    clone.querySelectorAll('[data-js-qty-minus],[data-js-qty-plus]').forEach((btn) => btn.setAttribute('data-id', el.getAttribute('data-id') || ''))
+    clone
+      .querySelectorAll('[data-js-qty-minus],[data-js-qty-plus]')
+      .forEach((btn) => btn.setAttribute('data-id', el.getAttribute('data-id') || ''))
     el.after(clone)
     el.remove()
   })
@@ -343,7 +434,10 @@ const qtySelectors = () => {
       let qty = parseInt(qtyEl.value.replace(/\D/g, ''), 10)
       qty = validateQty(qty)
       if (btn.classList.contains('js-qty__adjust--plus')) qty += 1
-      else { qty -= 1; if (qty <= 1) qty = 1 }
+      else {
+        qty -= 1
+        if (qty <= 1) qty = 1
+      }
       qtyEl.value = String(qty)
     })
   })

@@ -1,4 +1,5 @@
-let _raf = typeof requestAnimationFrame !== 'undefined' ? requestAnimationFrame : (fn) => setTimeout(fn, 16)
+const _raf =
+  typeof requestAnimationFrame !== 'undefined' ? requestAnimationFrame : (fn) => setTimeout(fn, 16)
 let _queueMeasure = []
 let _queueMutate = []
 let _scheduled = false
@@ -20,7 +21,13 @@ const schedule = () => {
 }
 
 export const scheduler = {
-  measure(fn) { _queueMeasure.push(fn); schedule() },
-  mutate(fn) { _queueMutate.push(fn); schedule() },
+  measure(fn) {
+    _queueMeasure.push(fn)
+    schedule()
+  },
+  mutate(fn) {
+    _queueMutate.push(fn)
+    schedule()
+  },
   flush,
 }

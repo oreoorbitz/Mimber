@@ -1,0 +1,27 @@
+{% comment %}
+  css-variables.liquid — Dawn/Horizon pattern (vanilla CSS)
+  Exposes theme settings as CSS custom properties for assets/base.css (plain CSS, no SCSS/Liquid).
+  Place inline in <head> via {% render 'css-variables' %} inside {% style %} or <style>.
+  Keeps SCSS Liquid (timber.scss.liquid) as legacy fallback; base.css is now vanilla and reads these vars.
+{% endcomment %}
+{% style %}
+  :root {
+    --color-primary: {{ settings.color_primary }};
+    --color-secondary: {{ settings.color_secondary }};
+    --color-body-text: {{ settings.color_body_text }};
+    --color-body-bg: {{ settings.color_body_bg }};
+    --color-border: {{ settings.color_borders }};
+    --color-footer-bg: {{ settings.color_footer_bg }};
+    --color-footer-text: {{ settings.color_footer_text }};
+    --color-footer-social: {{ settings.color_footer_social_link }};
+    --logo-max-width: {{ settings.logo_max_width | default: '450' | remove: 'px' }}px;
+    --gutter: 30px;
+    --site-width: 1180px;
+    --grid-gutter: 30px;
+    --radius: 3px;
+    --drawer-nav-width: 300px;
+    --drawer-cart-width: 300px;
+    --z-nav-dropdown: 5;
+    --z-drawer: 10;
+  }
+{% endstyle %}

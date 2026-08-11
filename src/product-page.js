@@ -32,7 +32,11 @@ export const productPage = (options = {}) => {
       if (variant.featured_image && productImage) {
         const newImg = variant.featured_image
         // Shopify.Image.switchImage is legacy CDN helper (shopify_common.js) — keep if present
-        if (window.Shopify && window.Shopify.Image && typeof window.Shopify.Image.switchImage === 'function') {
+        if (
+          window.Shopify &&
+          window.Shopify.Image &&
+          typeof window.Shopify.Image.switchImage === 'function'
+        ) {
           window.Shopify.Image.switchImage(newImg, productImage, switchImage)
         } else {
           switchImage(newImg && newImg.src ? newImg.src : newImg, null, productImage)
@@ -40,26 +44,45 @@ export const productPage = (options = {}) => {
       }
 
       if (variant.available) {
-        if (addToCart) { addToCart.classList.remove('disabled'); addToCart.disabled = false }
+        if (addToCart) {
+          addToCart.classList.remove('disabled')
+          addToCart.disabled = false
+        }
         if (addToCartText) addToCartText.textContent = i18n.addToCart
-        quantityElements.forEach((el) => { el.style.display = '' })
+        quantityElements.forEach((el) => {
+          el.style.display = ''
+        })
         // mepto .show() sets display block; keep default
-        if (quantityElements.length === 1 && quantityElements[0].style.display === 'none') quantityElements[0].style.display = 'block'
-        quantityElements.forEach((el) => { if (el.style.display === 'none') el.style.display = 'block' })
+        if (quantityElements.length === 1 && quantityElements[0].style.display === 'none')
+          quantityElements[0].style.display = 'block'
+        quantityElements.forEach((el) => {
+          if (el.style.display === 'none') el.style.display = 'block'
+        })
       } else {
-        if (addToCart) { addToCart.classList.add('disabled'); addToCart.disabled = true }
+        if (addToCart) {
+          addToCart.classList.add('disabled')
+          addToCart.disabled = true
+        }
         if (addToCartText) addToCartText.textContent = i18n.soldOut
-        quantityElements.forEach((el) => { el.style.display = 'none' })
+        quantityElements.forEach((el) => {
+          el.style.display = 'none'
+        })
       }
 
       if (productPrice) {
-        const fmt = window.Shopify && window.Shopify.formatMoney ? window.Shopify.formatMoney(variant.price, moneyFormat) : String(variant.price)
+        const fmt =
+          window.Shopify && window.Shopify.formatMoney
+            ? window.Shopify.formatMoney(variant.price, moneyFormat)
+            : String(variant.price)
         productPrice.innerHTML = fmt
       }
 
       if (comparePrice) {
         if (variant.compare_at_price > variant.price) {
-          const cfmt = window.Shopify && window.Shopify.formatMoney ? window.Shopify.formatMoney(variant.compare_at_price, moneyFormat) : String(variant.compare_at_price)
+          const cfmt =
+            window.Shopify && window.Shopify.formatMoney
+              ? window.Shopify.formatMoney(variant.compare_at_price, moneyFormat)
+              : String(variant.compare_at_price)
           comparePrice.innerHTML = `${i18n.compareAt} ${cfmt}`
           comparePrice.style.display = 'block'
         } else {
@@ -67,9 +90,14 @@ export const productPage = (options = {}) => {
         }
       }
     } else {
-      if (addToCart) { addToCart.classList.add('disabled'); addToCart.disabled = true }
+      if (addToCart) {
+        addToCart.classList.add('disabled')
+        addToCart.disabled = true
+      }
       if (addToCartText) addToCartText.textContent = i18n.unavailable
-      quantityElements.forEach((el) => { el.style.display = 'none' })
+      quantityElements.forEach((el) => {
+        el.style.display = 'none'
+      })
     }
   })
 }

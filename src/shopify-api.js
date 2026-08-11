@@ -1,7 +1,19 @@
 // ShopifyAPI — Slice 6 (ajax-cart dependency)
 // fetch + mepto CustomEvent vs jQuery.ajax/trigger. Keeps ShopifyAPI global.
+// Locale-aware per https://shopify.dev/docs/api/ajax/reference/cart#get--locale-cartjs
+// Use Shopify.routes.root ({{ routes.root_url }} / {{ request.locale.root_url }}) so /cart.js resolves to /{locale}/cart.js
+const getShopifyRoot = () => {
+  const r =
+    typeof window !== 'undefined' && window.Shopify && window.Shopify.routes && window.Shopify.routes.root
+      ? window.Shopify.routes.root
+      : '/'
+  return r.endsWith('/') ? r : `${r}/`
+}
+const cartUrl = (path) => {
+  const p = path.replace(/^\//, '')
+  return getShopifyRoot() + p
+}
 
-// eslint-disable-next-line no-unused-vars
 const attributeToString = (attr) => {
   if (typeof attr !== 'string') {
     attr = String(attr)
@@ -22,18 +34,25 @@ const trigger = (target, name, detail) => {
 }
 
 const jsonFetch = (url, opts = {}) =>
-  fetch(url, { credentials: 'same-origin', headers: { Accept: 'application/json' }, ...opts }).then(async (res) => {
-    const text = await res.text()
-    let data
-    try { data = text ? JSON.parse(text) : {} } catch (_) { data = { responseText: text } ; data.responseText = text }
-    if (!res.ok) {
-      const err = new Error('Shopify API error')
-      err.responseText = text
-      err.status = res.status
-      throw err
+  fetch(url, { credentials: 'same-origin', headers: { Accept: 'application/json' }, ...opts }).then(
+    async (res) => {
+      const text = await res.text()
+      let data
+      try {
+        data = text ? JSON.parse(text) : {}
+      } catch (_) {
+        data = { responseText: text }
+        data.responseText = text
+      }
+      if (!res.ok) {
+        const err = new Error('Shopify API error')
+        err.responseText = text
+        err.status = res.status
+        throw err
+      }
+      return data
     }
-    return data
-  })
+  )
 
 if (typeof window !== 'undefined') {
   window.ShopifyAPI = window.ShopifyAPI || {}
@@ -43,16 +62,22 @@ const ShopifyAPI = typeof window !== 'undefined' ? window.ShopifyAPI : {}
 
 ShopifyAPI.onCartUpdate = ShopifyAPI.onCartUpdate || function () {}
 
-ShopifyAPI.onError = ShopifyAPI.onError || function (xhr, _textStatus) {
-  let data
-  try { data = JSON.parse(xhr.responseText || xhr.message || '{}') } catch (_) { data = {} }
-  if (data.message) alert(`${data.message}(${data.status}): ${data.description}`)
-}
+ShopifyAPI.onError =
+  ShopifyAPI.onError ||
+  function (xhr, _textStatus) {
+    let data
+    try {
+      data = JSON.parse(xhr.responseText || xhr.message || '{}')
+    } catch (_) {
+      data = {}
+    }
+    if (data.message) alert(`${data.message}(${data.status}): ${data.description}`)
+  }
 
 ShopifyAPI.updateCartNote = (note, callback) => {
   const body = document.body
   trigger(body, 'beforeUpdateCartNote.ajaxCart', note)
-  fetch('/cart/update.js', {
+  fetch(cartUrl('/cart/update.js'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: 'note=' + encodeURIComponent(attributeToString(note)),
@@ -66,7 +91,10 @@ ShopifyAPI.updateCartNote = (note, callback) => {
     })
     .catch((err) => {
       trigger(body, 'errorUpdateCartNote.ajaxCart', [err, 'error'])
-      ShopifyAPI.onError({ responseText: err.responseText || err.message, status: err.status }, 'error')
+      ShopifyAPI.onError(
+        { responseText: err.responseText || err.message, status: err.status },
+        'error'
+      )
       trigger(body, 'completeUpdateCartNote.ajaxCart', [null, err, 'error'])
     })
 }
@@ -77,9 +105,12 @@ ShopifyAPI.addItemFromForm = (form, callback, errorCallback) => {
   // If form is a selector/string, try to find it
   let formEl = form
   if (typeof form === 'string') formEl = document.querySelector(form)
-  const bodyStr = formEl instanceof HTMLFormElement ? new URLSearchParams(new FormData(formEl)).toString() : new URLSearchParams(fd).toString()
+  const bodyStr =
+    formEl instanceof HTMLFormElement
+      ? new URLSearchParams(new FormData(formEl)).toString()
+      : new URLSearchParams(fd).toString()
   trigger(body, 'beforeAddItem.ajaxCart', form)
-  fetch('/cart/add.js', {
+  fetch(cartUrl('/cart/add.js'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
     body: bodyStr,
@@ -110,7 +141,7 @@ ShopifyAPI.addItemFromForm = (form, callback, errorCallback) => {
 
 ShopifyAPI.getCart = (callback) => {
   trigger(document.body, 'beforeGetCart.ajaxCart')
-  jsonFetch('/cart.js')
+  jsonFetch(cartUrl('/cart.js'))
     .then((cart) => {
       if (typeof callback === 'function') callback(cart)
       else ShopifyAPI.onCartUpdate(cart)
@@ -122,7 +153,7 @@ ShopifyAPI.getCart = (callback) => {
 ShopifyAPI.changeItem = (line, quantity, callback) => {
   const body = document.body
   trigger(body, 'beforeChangeItem.ajaxCart', [line, quantity])
-  fetch('/cart/change.js', {
+  fetch(cartUrl('/cart/change.js'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: `quantity=${encodeURIComponent(quantity)}&line=${encodeURIComponent(line)}`,
@@ -141,4 +172,4 @@ ShopifyAPI.changeItem = (line, quantity, callback) => {
     })
 }
 
-export { ShopifyAPI, attributeToString }
+export { ShopifyAPI, attributeToString, cartUrl, getShopifyRoot }
