@@ -9,8 +9,8 @@
 1. **Start at `AGENTS.md`.** Paste Mimber folder into client repo (e.g. `mimber-reference/`), then LLM reads `mimber-reference/AGENTS.md`. That file routes to this one for detail.
 2. **Diff, don't copy.** For each client theme file, `diff -u <mimber>/assets/timber.js.liquid <client>/assets/timber.js` (or `ajax-cart.js`). Better: diff `assets/timber.human.js` (prettified 496L backup, readable) — same logic. The diff is the client's business logic — preserve it. Only replace `jQuery` surface and polyfill scaffolding using the mappings below.
 3. **Never vendor Mepto silently.** All Mepto integrations must be explicit: `{{ 'mepto.js' | asset_url | script_tag }}` as first script after `shopify_common.js`, or `import $ from 'mepto'` in ESM. See `AGENTS.md` Mepto mapping and `004-mimber-timber-audit.md` in `orion/plans/` if available.
-4. **Polyfills already removed from Mimber.** `fastclick.min.js`, `modernizr.min.js`, `respond.min.js` + `respond-proxy.html` were deleted (`cf8216d`, evergreen, saves ~15K+2 requests). Do **not** re-add them in client themes — remove the `{{ 'fastclick…' | asset_url }}` etc. tags from `layout/theme.liquid:37,395` and replace with `touch-action: manipulation` CSS if needed.
-5. **Two Mepto targets only (sliced).** `timber.js.liquid` 496L and `ajax-cart.js.liquid` 563L. `handlebars.min.js` (46K) is **kept** here for reference; client themes may keep it or replace `template.tmpl` with `<template>` clone — check `grep -r "tmpl"` in client.
+4. **Polyfills + jQuery + Handlebars already removed from Mimber.** `fastclick.min.js`, `modernizr.min.js`, `respond.min.js` + `respond-proxy.html` were deleted (`cf8216d`, evergreen, saves ~15K+2 requests); `jquery/1.12.4` CDN → `mepto.js` + `handlebars.min.js` 46K → native `<template>` (slice 7, saves 46K+1 req) at `layout/theme.liquid:37-38` + `snippets/ajax-cart-template.liquid` + `collection-sorting.liquid` + `product.liquid`. Do **not** re-add them in client themes — remove the `{{ 'fastclick…' | asset_url }}` / `{{ 'handlebars…' }}` tags.
+5. **Two Mepto targets only (sliced).** `timber.js.liquid` 496L and `ajax-cart.js.liquid` 563L + `layout/theme.liquid` + `snippets/ajax-cart-template.liquid` (slice 7: native `<template>`). `handlebars.min.js` 46K **deleted** (use `<template>`); client themes may still have it — remove.
 6. **Build parity with `orion` libraries.** When you modernize `timber`/`ajax-cart` for a client, use the same stack as `flickity-mepto`/`currencies`/`recently-viewed`:
    - `package.json` `type:module` `browserslist ["last 3 versions"]`, `vite` `esnext + @rollup/plugin-babel` (`bugfixes:true`), `Babel` `preset-env` `modules:false`.
    - `src/` ESM per slice (see `AGENTS.md` Slice status), `src/scheduler.js` FastDOM `measure`/`mutate` (rAF), `DocumentFragment` for cart row inserts (ajax-cart).
@@ -25,7 +25,8 @@
 | **3** `productPage` | `product-page.js` (single `mutate`, `classList`/`disabled`/`textContent`, `Shopify.formatMoney` + `Shopify.Image.switchImage`, `options.i18n` defaults for `{{ t \| json }}`) | `dist 22.9K / 11.2K min (6.18K/3.76K gzip)`, 10 modules |
 | **4** `accessibleNav` | `accessible-nav.js` (`querySelectorAll`, `closest`, `classList`, `focus/blur`, body `touchstart` 250ms) | `dist 27.5K / 13.4K min (7.15K/4.35K gzip)`, 11 modules |
 | **5** `Drawers` | `drawers.js` (`Object.assign`/`bind`/`CustomEvent`+`mepto trigger`, `prepareTransition`, `mutate`, `trapFocus` `focusin`) | `dist 36.4K / 18K min (9.07K/5.51K gzip)`, 12 modules |
-| **6** `ajax-cart` | `shopify-api.js` + `ajax-cart.js` (`fetch`+`URLSearchParams`/`FormData` vs `$.ajax`/`Deferred`, `CustomEvent` vs `trigger`, `DocumentFragment` handlebars append, `Object.assign` vs `$.extend`) | `dist 63.8K / 32.1K min (15.06K/9.7K gzip)`, 14 modules — **all 1059L done** |
+| **6** `ajax-cart` | `shopify-api.js` + `ajax-cart.js` (`fetch`+`URLSearchParams`/`FormData` vs `$.ajax`/`Deferred`, `CustomEvent` vs `trigger`, `DocumentFragment` handlebars append, `Object.assign` vs `$.extend`) | `dist 63.8K / 32.1K min (15.06K/9.7K gzip)`, 14 modules — **all 1059L done** (handlebars kept) |
+| **7** `handlebars + theme liquid` | `assets/handlebars.min.js` **deleted** (46K), `snippets/ajax-cart-template.liquid` → `<template>` + `src/ajax-cart.js` native `<template>` clone, `layout/theme.liquid` `mepto.js` vs `jquery/1.12.4`, `snippets/collection-sorting.liquid` `URLSearchParams` vs `jQuery.param`, `templates/product.liquid` `DOMContentLoaded` vs `jQuery(function` | `dist 67.2K / 34.8K min (15.91K/10.4K gzip)`, 14 modules — **0 jQuery in theme, save 46K+1 req** |
 
 ## File Map (Mimber vs Client)
 
@@ -33,10 +34,12 @@
 |---|---|---|---|
 | `assets/timber.js.liquid` | Core theme JS (`prepareTransition`, `Shopify` helpers) | `assets/timber.js` or `theme.js` fork | Mepto `window.mepto \|\| jQuery`, `Object.assign` vs `$.extend`, `classList` vs `addClass` |
 | `assets/ajax-cart.js.liquid` | Ajax cart (`/cart.js`, `Handlebars`) | `assets/ajax-cart.js` or `cart.js` | `fetch` vs `$.ajax`, `Promise` vs `Deferred`, `DocumentFragment` |
-| `assets/handlebars.min.js` | `v1.3.0` templating | `assets/handlebars.min.js` may be customized | Keep or replace — audit `grep tmpl` first |
+| `snippets/ajax-cart-template.liquid` | Native `<template>` (was Handlebars) | `snippets/ajax-cart-template.liquid` | Replace Handlebars `{{#items}}` with `data-ajaxcart-*` + `template.content.cloneNode(true)` in `src/ajax-cart.js` |
+| `snippets/collection-sorting.liquid` | `URLSearchParams` vs `jQuery.param` | `snippets/collection-sorting.liquid` | `URLSearchParams` |
+| `templates/product.liquid` | `DOMContentLoaded` vs `jQuery(function` | `templates/product.liquid` | `DOMContentLoaded` + `mepto` |
 | `assets/timber.scss.liquid` | Base styles | `assets/theme.scss` fork | Do not modernize via Mimber — diff only (CSS is next phase, keep 1.0 Liquid for now) |
-| `layout/theme.liquid:37,395` | `jQuery 1.12.4` CDN + 3 polyfills | `layout/theme.liquid` | Replace `jquery` CDN with `mepto.js` after Mepto builds are staged |
-| `dist/theme/` | **Built Shopify 1.0 theme** (JS modernized, `assets/timber.js` replaced) | Client `dist/theme` or direct `assets/` | `npm run build` → `dist/theme` is ThemeKit deploy target (`directory: dist/theme`) |
+| `layout/theme.liquid` | Now `mepto.js` (was `jquery/1.12.4` + `handlebars` + `fastclick/modernizr`) | `layout/theme.liquid` | Already `mepto.js`; remove any remaining `jquery` tags in client |
+| `dist/theme/` | **Built Shopify 1.0 theme** (JS modernized, `assets/timber.js` replaced, `handlebars` deleted) | Client `dist/theme` or direct `assets/` | `go run ./cmd/mimber build` → `dist/theme` is ThemeKit deploy target (`directory: dist/theme`) |
 | `config.yml.example` | ThemeKit legacy config + preview URL template | Client `config.yml` | `cp config.yml.example config.yml`, set `x.y` store + `z` `theme_id` |
 | `scripts/build-theme.mjs` | Assembles `dist/theme` (copy `assets/layout/config/locales/snippets/templates` + overlay `dist/timber.pkgd.min.js`) | — | `npm run build:theme` |
 | `playwright.config.mjs` + `tests/preview.spec.js` | Playwright harness for preview `_ab=0&_fd=0&_sc=1&preview_theme_id=z` | — | `npx playwright test --grep preview` (remote) or `--grep local` (offline) |
@@ -52,8 +55,8 @@
 - `node --check dist/theme/assets/timber.js`, `grep -c "jQuery" dist/theme/assets/timber.js` → 0 (comments only).
 - `npx playwright test --grep local` — 2 tests for `dist/theme` structure + `config.yml.example`.
 - `shopify theme check` — no `fastclick`/`respond` 404s (since deleted in Mimber, remove tags in client).
-- Preview (with store): `cp config.yml.example config.yml` → fill `x.y` store + `z` `theme_id` → `npx shopify-themekit deploy` → `npx playwright test --grep preview` opens `https://x.y/?_ab=0&_fd=0&_sc=1&preview_theme_id=z`.
-- Manual: cart add/remove, `prepareTransition` (drawer), handlebars render, currency switch if `currencies-mepto` staged.
+- Preview (with store): `cp config.yml.example config.yml` → fill `x.y` store + `z` `theme_id` → `go run ./cmd/mimber deploy` → `go run ./cmd/mimber harness --preview` opens `https://x.y/?_ab=0&_fd=0&_sc=1&preview_theme_id=z` (or `npx playwright test --grep preview`).
+- Manual: cart add/remove, `prepareTransition` (drawer), native `<template>` cart render (no handlebars), currency switch if `currencies-mepto` staged.
 
 ## Links
 

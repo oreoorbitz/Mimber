@@ -167,7 +167,7 @@
     });
   };
 
-  jQuery(function($) {
+  document.addEventListener('DOMContentLoaded', function() {
     new Shopify.OptionSelectors('productSelect', {
       product: {{ product | json }},
       onVariantSelected: selectCallback,
@@ -176,12 +176,18 @@
 
     // Add label if only one product option and it isn't 'Title'. Could be 'Size'.
     {% if product.options.size == 1 and product.options.first != 'Title' %}
-      $('.selector-wrapper:eq(0)').prepend('<label for="productSelect-option-0">{{ product.options.first | escape }}</label>');
+      var sw0 = document.querySelector('.selector-wrapper');
+      if (sw0) {
+        var label = document.createElement('label');
+        label.htmlFor = 'productSelect-option-0';
+        label.textContent = '{{ product.options.first | escape }}';
+        sw0.prepend(label);
+      }
     {% endif %}
 
     // Hide selectors if we only have 1 variant and its title contains 'Default'.
     {% if product.variants.size == 1 and product.variants.first.title contains 'Default' %}
-      $('.selector-wrapper').hide();
+      document.querySelectorAll('.selector-wrapper').forEach(function(el) { el.style.display = 'none'; });
     {% endif %}
   });
 </script>

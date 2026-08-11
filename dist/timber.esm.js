@@ -5,6 +5,9 @@ function _arrayLikeToArray(r, a) {
   for (var e = 0, n = Array(a); e < a; e++) n[e] = r[e];
   return n;
 }
+function _arrayWithHoles(r) {
+  if (Array.isArray(r)) return r;
+}
 function _arrayWithoutHoles(r) {
   if (Array.isArray(r)) return _arrayLikeToArray(r);
 }
@@ -57,6 +60,33 @@ function _defineProperty(e, r, t) {
 }
 function _iterableToArray(r) {
   if ("undefined" != typeof Symbol && null != r[Symbol.iterator] || null != r["@@iterator"]) return Array.from(r);
+}
+function _iterableToArrayLimit(r, l) {
+  var t = null == r ? null : "undefined" != typeof Symbol && r[Symbol.iterator] || r["@@iterator"];
+  if (null != t) {
+    var e,
+      n,
+      i,
+      u,
+      a = [],
+      f = true,
+      o = false;
+    try {
+      if (i = (t = t.call(r)).next, 0 === l) ; else for (; !(f = (e = i.call(t)).done) && (a.push(e.value), a.length !== l); f = !0);
+    } catch (r) {
+      o = true, n = r;
+    } finally {
+      try {
+        if (!f && null != t.return && (u = t.return(), Object(u) !== u)) return;
+      } finally {
+        if (o) throw n;
+      }
+    }
+    return a;
+  }
+}
+function _nonIterableRest() {
+  throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.");
 }
 function _nonIterableSpread() {
   throw new TypeError("Invalid attempt to spread non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.");
@@ -189,6 +219,9 @@ function _regeneratorDefine(e, r, n, t) {
       writable: !t
     }) : e[r] = n : (o("next", 0), o("throw", 1), o("return", 2));
   }, _regeneratorDefine(e, r, n, t);
+}
+function _slicedToArray(r, e) {
+  return _arrayWithHoles(r) || _iterableToArrayLimit(r, e) || _unsupportedIterableToArray(r, e) || _nonIterableRest();
 }
 function _toConsumableArray(r) {
   return _arrayWithoutHoles(r) || _iterableToArray(r) || _unsupportedIterableToArray(r) || _nonIterableSpread();
@@ -1268,11 +1301,9 @@ var buildCart = function buildCart(cart) {
       cartCallback(cart);
       return;
     }
-    var sourceEl = q('#CartTemplate');
-    var source = sourceEl ? sourceEl.innerHTML : '';
-    var Handlebars = window.Handlebars;
-    if (!Handlebars || !source) {
-      // fallback: simple list without Handlebars
+    // native <template> path (no Handlebars, saves 46K) — falls back to simple list if no template
+    var tmpl = document.getElementById('CartTemplate');
+    if (!tmpl || !tmpl.content) {
       var _frag = document.createDocumentFragment();
       cart.items.forEach(function (cartItem, index) {
         var div = document.createElement('div');
@@ -1283,48 +1314,48 @@ var buildCart = function buildCart(cart) {
       cartCallback(cart);
       return;
     }
-    var template = Handlebars.compile(source);
-    var items = cart.items.map(function (cartItem, index) {
+    var fmt = function fmt(c) {
+      return window.Shopify && window.Shopify.formatMoney ? window.Shopify.formatMoney(c, settings.moneyFormat) : String(c);
+    };
+    document.createDocumentFragment();
+    // clone the template shell once (form + footer)
+    var shell = tmpl.content.cloneNode(true);
+    var itemsRoot = shell.querySelector('[data-ajaxcart-items]') || shell;
+    var priceEl = shell.querySelector('[data-ajaxcart-totalPrice]');
+    var savingsEl = shell.querySelector('[data-ajaxcart-savings]');
+    var noteEl = shell.querySelector('[data-ajaxcart-note]');
+    if (priceEl) priceEl.textContent = fmt(cart.total_price);
+    if (savingsEl) {
+      if (cart.total_discount === 0) savingsEl.style.display = 'none';else {
+        var tpl = settings.i18n && settings.i18n.savingsHtml || I18N.savingsHtml;
+        savingsEl.querySelector('em').textContent = tpl.replace('[savings]', fmt(cart.total_discount));
+        savingsEl.style.display = '';
+      }
+    }
+    if (noteEl) noteEl.value = cart.note || '';
+    cart.items.forEach(function (cartItem, idx) {
       var prodImg = '//cdn.shopify.com/s/assets/admin/no-image-medium-cc9732cb976dd349a0df1d39816fbcc7.gif';
       if (cartItem.image != null) prodImg = cartItem.image.replace(/(\.[^.]*)$/, '_small$1').replace('http:', '');
-      var fmt = function fmt(c) {
-        return window.Shopify && window.Shopify.formatMoney ? window.Shopify.formatMoney(c, settings.moneyFormat) : String(c);
-      };
-      return {
-        key: cartItem.key,
-        line: index + 1,
-        url: cartItem.url,
-        img: prodImg,
-        name: cartItem.product_title,
-        variation: cartItem.variant_title,
-        properties: cartItem.properties,
-        itemAdd: cartItem.quantity + 1,
-        itemMinus: cartItem.quantity - 1,
-        itemQty: cartItem.quantity,
-        price: fmt(cartItem.price),
-        vendor: cartItem.vendor,
-        linePrice: fmt(cartItem.line_price),
-        originalLinePrice: fmt(cartItem.original_line_price),
-        discounts: cartItem.discounts,
-        discountsApplied: cartItem.line_price !== cartItem.original_line_price
-      };
+      var line = idx + 1;
+      var row = document.createElement('div');
+      row.className = 'ajaxcart__product';
+      var discountsApplied = cartItem.line_price !== cartItem.original_line_price;
+      var propsHtml = cartItem.properties ? Object.entries(cartItem.properties).map(function (_ref) {
+        var _ref2 = _slicedToArray(_ref, 2),
+          k = _ref2[0],
+          v = _ref2[1];
+        return v ? "<span class=\"ajaxcart__product-meta\">".concat(k, ": ").concat(v, "</span>") : '';
+      }).join('') : '';
+      var discountsHtml = discountsApplied ? "<small class=\"ajaxcart-item__price-strikethrough\"><s>".concat(fmt(cartItem.original_line_price), "</s></small><br><span>").concat(fmt(cartItem.line_price), "</span>") : "<span>".concat(fmt(cartItem.line_price), "</span>");
+      var eachDiscounts = discountsApplied && cartItem.discounts && cartItem.discounts.length ? "<div class=\"grid--full display-table\"><div class=\"grid__item text-right\">".concat(cartItem.discounts.map(function (d) {
+        return "<small class=\"ajaxcart-item__discount\">".concat(d.title, "</small><br>");
+      }).join(''), "</div></div>") : '';
+      var vendorHtml = cartItem.vendor ? "<span class=\"ajaxcart__product-meta\">".concat(cartItem.vendor, "</span>") : '';
+      var variationHtml = cartItem.variant_title ? "<span class=\"ajaxcart__product-meta\">".concat(cartItem.variant_title, "</span>") : '';
+      row.innerHTML = "<div class=\"ajaxcart__row\" data-line=\"".concat(line, "\"><div class=\"grid\"><div class=\"grid__item one-quarter\"><a href=\"").concat(cartItem.url, "\" class=\"ajaxcart__product-image\"><img src=\"").concat(prodImg, "\" alt=\"\"></a></div><div class=\"grid__item three-quarters\"><p><a href=\"").concat(cartItem.url, "\" class=\"ajaxcart__product-name\">").concat(cartItem.product_title, "</a>").concat(variationHtml).concat(propsHtml).concat(vendorHtml, "</p><div class=\"grid--full display-table\"><div class=\"grid__item display-table-cell one-half\"><div class=\"ajaxcart__qty\"><button type=\"button\" class=\"ajaxcart__qty-adjust ajaxcart__qty--minus icon-fallback-text\" data-id=\"").concat(cartItem.key, "\" data-qty=\"").concat(cartItem.quantity - 1, "\" data-line=\"").concat(line, "\"><span class=\"icon icon-minus\" aria-hidden=\"true\"></span><span class=\"visually-hidden\">Reduce</span></button><input type=\"text\" name=\"updates[]\" class=\"ajaxcart__qty-num\" value=\"").concat(cartItem.quantity, "\" min=\"0\" data-id=\"").concat(cartItem.key, "\" data-line=\"").concat(line, "\" aria-label=\"quantity\" pattern=\"[0-9]*\"><button type=\"button\" class=\"ajaxcart__qty-adjust ajaxcart__qty--plus icon-fallback-text\" data-id=\"").concat(cartItem.key, "\" data-line=\"").concat(line, "\" data-qty=\"").concat(cartItem.quantity + 1, "\"><span class=\"icon icon-plus\" aria-hidden=\"true\"></span><span class=\"visually-hidden\">Increase</span></button></div></div><div class=\"grid__item display-table-cell one-half text-right\">").concat(discountsHtml, "</div>").concat(eachDiscounts, "</div></div></div></div>");
+      itemsRoot.appendChild(row);
     });
-    var savingsTpl = settings.i18n && settings.i18n.savingsHtml || I18N.savingsHtml;
-    var totalCartDiscount = cart.total_discount === 0 ? 0 : savingsTpl.replace('[savings]', window.Shopify && window.Shopify.formatMoney ? window.Shopify.formatMoney(cart.total_discount, settings.moneyFormat) : String(cart.total_discount));
-    var data = {
-      items: items,
-      note: cart.note,
-      totalPrice: window.Shopify && window.Shopify.formatMoney ? window.Shopify.formatMoney(cart.total_price, settings.moneyFormat) : String(cart.total_price),
-      totalCartDiscount: totalCartDiscount,
-      totalCartDiscountApplied: cart.total_discount !== 0
-    };
-    // append via DocumentFragment for single reflow (PERFORMANCE_GUIDE Part I)
-    var html = template(data);
-    var tmp = document.createElement('div');
-    tmp.innerHTML = html;
-    var frag = document.createDocumentFragment();
-    while (tmp.firstChild) frag.appendChild(tmp.firstChild);
-    container.appendChild(frag);
+    container.appendChild(shell);
     cartCallback(cart);
   });
 };
@@ -1442,27 +1473,24 @@ var loadCart = function loadCart() {
 var qtySelectors = function qtySelectors() {
   var numInputs = qq('input[type="number"]');
   if (!numInputs.length) return;
+  var tmpl = document.getElementById('JsQty');
+  if (!tmpl || !tmpl.content) return;
   numInputs.forEach(function (el) {
     var currentQty = el.value;
     var inputName = el.getAttribute('name');
     var inputId = el.getAttribute('id');
-    var itemAdd = String(parseInt(currentQty, 10) + 1);
-    var itemMinus = String(parseInt(currentQty, 10) - 1);
-    var sourceEl = q('#JsQty');
-    var Handlebars = window.Handlebars;
-    if (!Handlebars || !sourceEl) return;
-    var template = Handlebars.compile(sourceEl.innerHTML);
-    var data = {
-      key: el.getAttribute('data-id'),
-      itemQty: currentQty,
-      itemAdd: itemAdd,
-      itemMinus: itemMinus,
-      inputName: inputName,
-      inputId: inputId
-    };
-    var tmp = document.createElement('div');
-    tmp.innerHTML = template(data);
-    el.after(tmp.firstElementChild || tmp.firstChild);
+    var clone = tmpl.content.cloneNode(true);
+    var qtyInput = clone.querySelector('[data-js-qty-num]');
+    if (qtyInput) {
+      qtyInput.value = currentQty;
+      qtyInput.setAttribute('data-id', el.getAttribute('data-id') || '');
+      if (inputName) qtyInput.setAttribute('name', inputName);
+      if (inputId) qtyInput.setAttribute('id', inputId);
+    }
+    clone.querySelectorAll('[data-js-qty-minus],[data-js-qty-plus]').forEach(function (btn) {
+      return btn.setAttribute('data-id', el.getAttribute('data-id') || '');
+    });
+    el.after(clone);
     el.remove();
   });
   qq('.js-qty__adjust').forEach(function (btn) {

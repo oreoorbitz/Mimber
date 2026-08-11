@@ -34,8 +34,7 @@
   {{ content_for_header }}
   {% include 'oldIE-js' %}
 
-  {{ '//ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js' | script_tag }}
-  {{ 'modernizr.min.js' | asset_url | script_tag }}
+  {{ 'mepto.js' | asset_url | script_tag }}
 
   {% comment %}
     If you store has customer accounts disabled, you can remove the following JS file
@@ -392,7 +391,6 @@
     <!-- //site-footer -->
   </div>
 
-  {{ 'fastclick.min.js' | asset_url | script_tag }}
   {{ 'timber.js' | asset_url | script_tag }}
 
   {% comment %}
@@ -400,7 +398,7 @@
   {% endcomment %}
   <script>
     {% if resetPassword %}
-      $(function() {
+      document.addEventListener('DOMContentLoaded', function() {
         timber.resetPasswordSuccess();
       });
     {% endif %}
@@ -412,11 +410,10 @@
       - http://shopify.com/timber#ajax-cart
   {% endcomment %}
   {% if settings.ajax_cart_method == "drawer" %}
-    {{ 'handlebars.min.js' | asset_url | script_tag }}
     {% include 'ajax-cart-template' %}
     {{ 'ajax-cart.js' | asset_url | script_tag }}
     <script>
-      jQuery(function($) {
+      document.addEventListener('DOMContentLoaded', function() {
         ajaxCart.init({
           formSelector: '#AddToCartForm',
           cartContainer: '#CartContainer',
@@ -427,8 +424,9 @@
         });
       });
 
-      jQuery(document.body).on('afterCartLoad.ajaxCart', function(evt, cart) {
+      document.body.addEventListener('afterCartLoad.ajaxCart', function(evt) {
         // Bind to 'afterCartLoad.ajaxCart' to run any javascript after the cart has loaded in the DOM
+        var cart = evt.detail;
         timber.RightDrawer.open();
       });
     </script>

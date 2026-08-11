@@ -60,7 +60,8 @@ Do not guess past the router — open the doc. `AGENTS.md` stays short.
 | **3 — productPage** | 203-259 | Variant pricing UI (`variant.available`, `compare_at_price`, `Shopify.formatMoney`) | **Done** (10 modules, `dist 22.9K/11.2K min`) | `classList`/`disabled`/`textContent` in single `mutate`, `Shopify.Image.switchImage` kept |
 | **4 — accessibleNav** | 105-182 | `mouseenter/touchstart`, `focus/blur`, `showDropdown` body `on/off('touchstart')` | **Done** (11 modules, `dist 27.5K/13.4K min`) | `querySelectorAll`, `closest`, `classList`, `setTimeout 250ms` body `touchstart` |
 | **5 — Drawers** | 348-493 | `timber.Drawers` (`$.extend`/`$.proxy`, `trigger`, `trapFocus`, `prepareTransition`) | **Done** (12 modules, `dist 36.4K/18K min`) | `Object.assign` vs `$.extend`, `bind` vs `$.proxy`, `CustomEvent` + `mepto trigger` compat, `mutate` |
-| **6 — ajax-cart** | `ajax-cart.js.liquid` 563 | `$.ajax`/`Deferred` + `Handlebars` cart rendering | **Done** (14 modules, `dist 63.8K/32.1K min`) | `fetch` vs `$.ajax`, `FormData`+`URLSearchParams`, `DocumentFragment`, `CustomEvent` |
+| **6 — ajax-cart** | `ajax-cart.js.liquid` 563 | `$.ajax`/`Deferred` + `Handlebars` cart rendering | **Done** (14 modules, `dist 63.8K/32.1K min` → `67.2K/34.8K` with slice 7) | `fetch` vs `$.ajax`, `FormData`+`URLSearchParams`, `DocumentFragment`, `CustomEvent` |
+| **7 — handlebars + theme liquid** | `handlebars.min.js` 46K + `theme.liquid` + `ajax-cart-template` + `collection-sorting`/`product` | **Done** (14 modules, `dist 67.2K/34.8K min`, **save 46K + 1 req**, 0 `jQuery` in theme) | `native <template>` vs `Handlebars.compile`, `mepto.js` vs `jquery/1.12.4`, `URLSearchParams` vs `jQuery.param`, `DOMContentLoaded` vs `jQuery(function` |
 
 Update this table when you land a slice — LLM points at this file.
 
@@ -78,7 +79,8 @@ Update this table when you land a slice — LLM points at this file.
 | `assets/timber.js.liquid` | **Frozen original** 496L — Shopify Timber core | Diff vs client `timber.js`/`theme.js` fork |
 | `assets/timber.human.js` | Prettified backup of `timber.js.liquid` (same 496L, readable) | Readable diff base |
 | `assets/ajax-cart.js.liquid` | Ajax cart 563L — `$.ajax` + `Handlebars` | Diff vs client `ajax-cart.js`/`cart.js` |
-| `assets/timber.scss.liquid`, `assets/handlebars.min.js` (46K), `layout/theme.liquid:37,395`, `bower.json` | Styles/vendor/shell — reference only, not modernized via Mimber | Diff only, remove polyfill tags |
+| `snippets/ajax-cart-template.liquid` + `snippets/collection-sorting.liquid` + `templates/product.liquid` | `Handlebars`/`jQuery.param`/`jQuery(function` → native `<template>`/`URLSearchParams`/`DOMContentLoaded` | Diff vs client, remove `handlebars.min.js` script tag |
+| `assets/timber.scss.liquid`, `layout/theme.liquid` (now `mepto.js` vs `jquery/1.12.4`+`modernizr`+`fastclick`), `bower.json` | Styles/vendor/shell — reference only, partly modernized (slice 7: `mepto.js`) | Diff only, remove polyfill tags |
 | `src/prepare-transition.js` | Slice 1: Mepto `prepareTransition` + `scheduler` rAF | Copy pattern to client |
 | `src/money-format.js` | Slice 1: `Shopify.formatMoney` hoisted regex | Copy pattern |
 | `src/url.js` | `replaceUrlParam` cached `RegExp` | Reused by `collectionViews` |
@@ -87,7 +89,7 @@ Update this table when you land a slice — LLM points at this file.
 | `src/product-page.js` | Slice 3: `productPage` single `mutate`, `classList`/`disabled`, `Shopify.formatMoney` + `Shopify.Image.switchImage`, `i18n` defaults (Liquid `{{ t | json }}` → `options.i18n`) | Copy |
 | `src/accessible-nav.js` | Slice 4: `accessibleNav` `querySelectorAll`, `closest`, `classList`, `focus/blur` | Copy |
 | `src/drawers.js` | Slice 5: `Drawers` `Object.assign`/`bind`/`CustomEvent`+`mepto trigger`, `prepareTransition`, `mutate`, `trapFocus` | Copy |
-| `src/shopify-api.js` + `src/ajax-cart.js` | Slice 6: `ShopifyAPI` (`fetch`+`CustomEvent`), `ajaxCart` (`DocumentFragment`, `FormData`, `Handlebars` kept) | Copy |
+| `src/shopify-api.js` + `src/ajax-cart.js` | Slice 6→7: `ShopifyAPI` (`fetch`+`CustomEvent`), `ajaxCart` (slice 7: native `<template>` **no Handlebars**, `DocumentFragment`) | Copy |
 | `src/scheduler.js` | FastDOM `measure`/`mutate` rAF | Shared by slice 1-6 |
 | `src/mepto.js` | `window.mepto \|\| window.jQuery` getter (`$`) | Shared |
 | `src/index.js` | Assembles `window.timber` legacy names, `DOMContentLoaded` auto-init | Entry |
@@ -151,7 +153,7 @@ node --check src/*.js
 grep -c "jQuery" dist/theme/assets/timber.js  # → 0 (comments only)
 ```
 
-Dist current (slice 6): `timber.esm.js 60.1K` / `timber.pkgd.js 63.8K` / `timber.pkgd.min.js 32.1K` (`9.7K gzip`). All `timber.js.liquid` (496L) + `ajax-cart.js.liquid` (563L) = **1059L** modernized — `timber.js` 15K + `ajax-cart` 17K → **63.8K pkgd / 32K min** (Handlebars 46K kept external).
+Dist current (slice 7): `timber.esm.js 63.5K` / `timber.pkgd.js 67.2K` / `timber.pkgd.min.js 34.8K` (`10.4K gzip`). All `timber.js.liquid` 496L + `ajax-cart.js.liquid` 563L + `theme.liquid`/`ajax-cart-template` (`handlebars.min.js` 46K **deleted**, save 46K+1 req) = **1059L+theme liquid modernized** — total `67.2K pkgd / 34.8K min` (0 `jQuery` in theme, `mepto.js` only).
 
 ---
 
@@ -163,4 +165,4 @@ Dist current (slice 6): `timber.esm.js 60.1K` / `timber.pkgd.js 63.8K` / `timber
 
 ## Quick links
 
-Upstream Timber `2.2.2` https://github.com/Shopify/Timber — Mepto https://github.com/oreoorbitz/Mepto + bundled ThemeKit fork https://github.com/oreoorbitz/themekit (Go, `vendor/themekit`, 1.0) — Handlebars `1.3.0` 46K — Shopify `shopify_common.js` (keep)
+Upstream Timber `2.2.2` https://github.com/Shopify/Timber — Mepto https://github.com/oreoorbitz/Mepto + bundled ThemeKit fork https://github.com/oreoorbitz/themekit (Go, `vendor/themekit`, 1.0) — Handlebars `1.3.0` 46K **removed slice 7 (native <template>)** — Shopify `shopify_common.js` (keep)

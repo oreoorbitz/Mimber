@@ -1,4 +1,4 @@
-// ajaxCart — Slice 6 (mepto/native, fetch via ShopifyAPI, Handlebars kept)
+// ajaxCart — Slice 7 (mepto/native, fetch via ShopifyAPI, native <template> — no Handlebars, saves 46K)
 // Modern: Object.assign vs $.extend, querySelectorAll vs $, addEventListener vs $.on, scheduler.mutate vs direct DOM.
 
 import { ShopifyAPI } from './shopify-api.js'
@@ -122,11 +122,9 @@ const buildCart = (cart) => {
       cartCallback(cart)
       return
     }
-    const sourceEl = q('#CartTemplate')
-    const source = sourceEl ? sourceEl.innerHTML : ''
-    const Handlebars = window.Handlebars
-    if (!Handlebars || !source) {
-      // fallback: simple list without Handlebars
+    // native <template> path (no Handlebars, saves 46K) — falls back to simple list if no template
+    const tmpl = document.getElementById('CartTemplate')
+    if (!tmpl || !tmpl.content) {
       const frag = document.createDocumentFragment()
       cart.items.forEach((cartItem, index) => {
         const div = document.createElement('div')
@@ -138,46 +136,42 @@ const buildCart = (cart) => {
       cartCallback(cart)
       return
     }
-    const template = Handlebars.compile(source)
-    const items = cart.items.map((cartItem, index) => {
+    const fmt = (c) => (window.Shopify && window.Shopify.formatMoney ? window.Shopify.formatMoney(c, settings.moneyFormat) : String(c))
+    const frag = document.createDocumentFragment()
+    // clone the template shell once (form + footer)
+    const shell = tmpl.content.cloneNode(true)
+    const itemsRoot = shell.querySelector('[data-ajaxcart-items]') || shell
+    const priceEl = shell.querySelector('[data-ajaxcart-totalPrice]')
+    const savingsEl = shell.querySelector('[data-ajaxcart-savings]')
+    const noteEl = shell.querySelector('[data-ajaxcart-note]')
+    if (priceEl) priceEl.textContent = fmt(cart.total_price)
+    if (savingsEl) {
+      if (cart.total_discount === 0) savingsEl.style.display = 'none'
+      else {
+        const tpl = (settings.i18n && settings.i18n.savingsHtml) || I18N.savingsHtml
+        savingsEl.querySelector('em').textContent = tpl.replace('[savings]', fmt(cart.total_discount))
+        savingsEl.style.display = ''
+      }
+    }
+    if (noteEl) noteEl.value = cart.note || ''
+
+    cart.items.forEach((cartItem, idx) => {
       let prodImg = '//cdn.shopify.com/s/assets/admin/no-image-medium-cc9732cb976dd349a0df1d39816fbcc7.gif'
       if (cartItem.image != null) prodImg = cartItem.image.replace(/(\.[^.]*)$/, '_small$1').replace('http:', '')
-      const fmt = (c) => (window.Shopify && window.Shopify.formatMoney ? window.Shopify.formatMoney(c, settings.moneyFormat) : String(c))
-      return {
-        key: cartItem.key,
-        line: index + 1,
-        url: cartItem.url,
-        img: prodImg,
-        name: cartItem.product_title,
-        variation: cartItem.variant_title,
-        properties: cartItem.properties,
-        itemAdd: cartItem.quantity + 1,
-        itemMinus: cartItem.quantity - 1,
-        itemQty: cartItem.quantity,
-        price: fmt(cartItem.price),
-        vendor: cartItem.vendor,
-        linePrice: fmt(cartItem.line_price),
-        originalLinePrice: fmt(cartItem.original_line_price),
-        discounts: cartItem.discounts,
-        discountsApplied: cartItem.line_price !== cartItem.original_line_price,
-      }
+      const line = idx + 1
+      const row = document.createElement('div')
+      row.className = 'ajaxcart__product'
+      const discountsApplied = cartItem.line_price !== cartItem.original_line_price
+      const propsHtml = cartItem.properties ? Object.entries(cartItem.properties).map(([k, v]) => v ? `<span class="ajaxcart__product-meta">${k}: ${v}</span>` : '').join('') : ''
+      const discountsHtml = discountsApplied ? `<small class="ajaxcart-item__price-strikethrough"><s>${fmt(cartItem.original_line_price)}</s></small><br><span>${fmt(cartItem.line_price)}</span>` : `<span>${fmt(cartItem.line_price)}</span>`
+      const eachDiscounts = discountsApplied && cartItem.discounts && cartItem.discounts.length ? `<div class="grid--full display-table"><div class="grid__item text-right">${cartItem.discounts.map(d => `<small class="ajaxcart-item__discount">${d.title}</small><br>`).join('')}</div></div>` : ''
+      const vendorHtml = cartItem.vendor ? `<span class="ajaxcart__product-meta">${cartItem.vendor}</span>` : ''
+      const variationHtml = cartItem.variant_title ? `<span class="ajaxcart__product-meta">${cartItem.variant_title}</span>` : ''
+      row.innerHTML = `<div class="ajaxcart__row" data-line="${line}"><div class="grid"><div class="grid__item one-quarter"><a href="${cartItem.url}" class="ajaxcart__product-image"><img src="${prodImg}" alt=""></a></div><div class="grid__item three-quarters"><p><a href="${cartItem.url}" class="ajaxcart__product-name">${cartItem.product_title}</a>${variationHtml}${propsHtml}${vendorHtml}</p><div class="grid--full display-table"><div class="grid__item display-table-cell one-half"><div class="ajaxcart__qty"><button type="button" class="ajaxcart__qty-adjust ajaxcart__qty--minus icon-fallback-text" data-id="${cartItem.key}" data-qty="${cartItem.quantity - 1}" data-line="${line}"><span class="icon icon-minus" aria-hidden="true"></span><span class="visually-hidden">Reduce</span></button><input type="text" name="updates[]" class="ajaxcart__qty-num" value="${cartItem.quantity}" min="0" data-id="${cartItem.key}" data-line="${line}" aria-label="quantity" pattern="[0-9]*"><button type="button" class="ajaxcart__qty-adjust ajaxcart__qty--plus icon-fallback-text" data-id="${cartItem.key}" data-line="${line}" data-qty="${cartItem.quantity + 1}"><span class="icon icon-plus" aria-hidden="true"></span><span class="visually-hidden">Increase</span></button></div></div><div class="grid__item display-table-cell one-half text-right">${discountsHtml}</div>${eachDiscounts}</div></div></div></div>`
+      itemsRoot.appendChild(row)
     })
-    const savingsTpl = (settings.i18n && settings.i18n.savingsHtml) || I18N.savingsHtml
-    const totalCartDiscount = cart.total_discount === 0 ? 0 : savingsTpl.replace('[savings]', window.Shopify && window.Shopify.formatMoney ? window.Shopify.formatMoney(cart.total_discount, settings.moneyFormat) : String(cart.total_discount))
-    const data = {
-      items,
-      note: cart.note,
-      totalPrice: window.Shopify && window.Shopify.formatMoney ? window.Shopify.formatMoney(cart.total_price, settings.moneyFormat) : String(cart.total_price),
-      totalCartDiscount,
-      totalCartDiscountApplied: cart.total_discount !== 0,
-    }
-    // append via DocumentFragment for single reflow (PERFORMANCE_GUIDE Part I)
-    const html = template(data)
-    const tmp = document.createElement('div')
-    tmp.innerHTML = html
-    const frag = document.createDocumentFragment()
-    while (tmp.firstChild) frag.appendChild(tmp.firstChild)
-    container.appendChild(frag)
+
+    container.appendChild(shell)
     cartCallback(cart)
   })
 }
@@ -301,18 +295,19 @@ const loadCart = () => {
 const createQtySelectors = () => {
   const container = unwrap(cartContainer) || document
   const inputs = qq('input[type="number"]', container)
+  const tmpl = document.getElementById('AjaxQty')
+  if (!tmpl || !tmpl.content) return
   inputs.forEach((el) => {
     const currentQty = el.value
-    const itemAdd = String(parseInt(currentQty, 10) + 1)
-    const itemMinus = String(parseInt(currentQty, 10) - 1)
-    const sourceEl = q('#AjaxQty')
-    const Handlebars = window.Handlebars
-    if (!Handlebars || !sourceEl) return
-    const template = Handlebars.compile(sourceEl.innerHTML)
-    const data = { key: el.getAttribute('data-id'), itemQty: currentQty, itemAdd, itemMinus }
-    const tmp = document.createElement('div')
-    tmp.innerHTML = template(data)
-    el.after(tmp.firstElementChild || tmp.firstChild)
+    const clone = tmpl.content.cloneNode(true)
+    const qtyInput = clone.querySelector('[data-ajaxcart-qty-num]')
+    if (qtyInput) { qtyInput.value = currentQty; qtyInput.setAttribute('data-id', el.getAttribute('data-id') || '') }
+    clone.querySelectorAll('[data-ajaxcart-qty-minus],[data-ajaxcart-qty-plus]').forEach((btn) => btn.setAttribute('data-id', el.getAttribute('data-id') || ''))
+    const minus = clone.querySelector('[data-ajaxcart-qty-minus]')
+    if (minus) minus.setAttribute('data-qty', String(parseInt(currentQty, 10) - 1))
+    const plus = clone.querySelector('[data-ajaxcart-qty-plus]')
+    if (plus) plus.setAttribute('data-qty', String(parseInt(currentQty, 10) + 1))
+    el.after(clone)
     el.remove()
   })
 }
@@ -320,20 +315,22 @@ const createQtySelectors = () => {
 const qtySelectors = () => {
   const numInputs = qq('input[type="number"]')
   if (!numInputs.length) return
+  const tmpl = document.getElementById('JsQty')
+  if (!tmpl || !tmpl.content) return
   numInputs.forEach((el) => {
     const currentQty = el.value
     const inputName = el.getAttribute('name')
     const inputId = el.getAttribute('id')
-    const itemAdd = String(parseInt(currentQty, 10) + 1)
-    const itemMinus = String(parseInt(currentQty, 10) - 1)
-    const sourceEl = q('#JsQty')
-    const Handlebars = window.Handlebars
-    if (!Handlebars || !sourceEl) return
-    const template = Handlebars.compile(sourceEl.innerHTML)
-    const data = { key: el.getAttribute('data-id'), itemQty: currentQty, itemAdd, itemMinus, inputName, inputId }
-    const tmp = document.createElement('div')
-    tmp.innerHTML = template(data)
-    el.after(tmp.firstElementChild || tmp.firstChild)
+    const clone = tmpl.content.cloneNode(true)
+    const qtyInput = clone.querySelector('[data-js-qty-num]')
+    if (qtyInput) {
+      qtyInput.value = currentQty
+      qtyInput.setAttribute('data-id', el.getAttribute('data-id') || '')
+      if (inputName) qtyInput.setAttribute('name', inputName)
+      if (inputId) qtyInput.setAttribute('id', inputId)
+    }
+    clone.querySelectorAll('[data-js-qty-minus],[data-js-qty-plus]').forEach((btn) => btn.setAttribute('data-id', el.getAttribute('data-id') || ''))
+    el.after(clone)
     el.remove()
   })
   qq('.js-qty__adjust').forEach((btn) => {
