@@ -39,7 +39,7 @@ Do not guess past the router — open the doc. `AGENTS.md` stays short.
 | **0 — humanize + deletes** | — | `prettier` → `timber.human.js` (496L backup), delete `fastclick.min.js`/`modernizr.min.js`/`respond.min.js`+proxy | **Done** `cf8216d` | `touch-action: manipulation` vs `FastClick` |
 | **1 — prepareTransition + formatMoney** | 1-62 | `prepareTransition` + `Shopify.formatMoney` + `replaceUrlParam` + `scheduler` | **Done** `b7353a4` | `window.mepto\|\|jQuery`, `classList`+`transitionend {once:true}`, `void offsetWidth` in `mutate` |
 | **2 — cache + small utils** | 67-103,193-342 | `cacheSelectors`, `init` (no FastClick), `mobileNavToggle`, `getHash`, `switchImage`, `productImageSwitch`, `responsiveVideos`, `collectionViews`, `loginForms`, `resetPasswordSuccess` | **Done** `aa4342c` (9 modules, `dist 17.7K/8.5K min`) | `querySelectorAll` bulk, `mepto` fallback, `scheduler.mutate` wraps |
-| **3 — productPage** | 203-259 | Variant pricing UI (`variant.available`, `compare_at_price`, `Shopify.formatMoney`) | **Queued** | `.prop/.addClass/.html/.show` + `Liquid {{ 'products.*' \| t \| json }}` |
+| **3 — productPage** | 203-259 | Variant pricing UI (`variant.available`, `compare_at_price`, `Shopify.formatMoney`) | **Done** (10 modules, `dist 22.9K/11.2K min`) | `classList`/`disabled`/`textContent` in single `mutate`, `Shopify.Image.switchImage` kept |
 | **4 — accessibleNav** | 105-182 | `mouseenter/touchstart`, `focus/blur`, `showDropdown` body `on/off('touchstart')` | **Queued** | `.find/.has/.closest`, `setTimeout 250ms`, delegated `touchstart` |
 | **5 — Drawers** | 348-493 | `timber.Drawers` (`$.extend`/`$.proxy`, `trigger`, `trapFocus`, `prepareTransition`) | **Queued** | `Object.assign` vs `$.extend`, `bind` vs `$.proxy`, `CustomEvent` |
 | **6 — ajax-cart** | `ajax-cart.js.liquid` 563 | `$.ajax`/`Deferred` + `Handlebars` cart rendering | **Queued** | `fetch` vs `$.ajax`, `Promise`, `DocumentFragment` + `<template>` |
@@ -66,7 +66,8 @@ Update this table when you land a slice — LLM points at this file.
 | `src/url.js` | `replaceUrlParam` cached `RegExp` | Reused by `collectionViews` |
 | `src/cache.js` | Slice 2: `cacheSelectors` bulk `querySelectorAll`, `mepto` fallback | Copy |
 | `src/utils.js` | Slice 2: `mobileNavToggle` etc., `scheduler.mutate` batches | Copy |
-| `src/scheduler.js` | FastDOM `measure`/`mutate` rAF | Shared by slice 1-2 |
+| `src/product-page.js` | Slice 3: `productPage` single `mutate`, `classList`/`disabled`, `Shopify.formatMoney` + `Shopify.Image.switchImage`, `i18n` defaults (Liquid `{{ t | json }}` → `options.i18n`) | Copy |
+| `src/scheduler.js` | FastDOM `measure`/`mutate` rAF | Shared by slice 1-3 |
 | `src/mepto.js` | `window.mepto \|\| window.jQuery` getter (`$`) | Shared |
 | `src/index.js` | Assembles `window.timber` legacy names, `DOMContentLoaded` auto-init | Entry |
 | `dist/timber.esm.js` / `dist/timber.pkgd.js` / `dist/timber.pkgd.min.js` | Built artifacts — Vite `esnext` + Babel `last 3` | Copy `pkgd.min.js` → client `assets/timber.js` |
@@ -115,7 +116,7 @@ node --check src/*.js
 grep -c "jQuery" assets/timber.js  # → 0 (comments only)
 ```
 
-Dist current (slice 2): `timber.esm.js 16.4K` / `timber.pkgd.js 17.7K` / `timber.pkgd.min.js 8.5K` (`2.96K gzip`). Grows as slices 3-6 land.
+Dist current (slice 3): `timber.esm.js 21.3K` / `timber.pkgd.js 22.9K` / `timber.pkgd.min.js 11.2K` (`3.76K gzip`). Grows as slices 4-6 land.
 
 ---
 

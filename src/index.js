@@ -5,6 +5,7 @@ import { installFormatMoney } from './money-format.js'
 import { replaceUrlParam } from './url.js'
 import { cacheSelectors } from './cache.js'
 import { getHash, switchImage, mobileNavToggle, productImageSwitch, responsiveVideos, collectionViews, loginForms, resetPasswordSuccess } from './utils.js'
+import { productPage } from './product-page.js'
 
 if (typeof window !== 'undefined') {
   window.Shopify = window.Shopify || {}
@@ -21,6 +22,7 @@ if (typeof window !== 'undefined') {
   window.timber.collectionViews = () => collectionViews(window.timber)
   window.timber.loginForms = () => loginForms(window.timber)
   window.timber.resetPasswordSuccess = () => resetPasswordSuccess(window.timber)
+  window.timber.productPage = productPage
   const _origInit = window.timber.init
   window.timber.init = () => {
     // FastClick removed (evergreen); keep rest, defer to present slices
@@ -38,6 +40,6 @@ if (typeof window !== 'undefined') {
   else queueMicrotask(() => window.timber.init())
 }
 
-export { prepareTransition, replaceUrlParam, cacheSelectors, getHash, switchImage, mobileNavToggle, productImageSwitch, responsiveVideos, collectionViews, loginForms, resetPasswordSuccess }
+export { prepareTransition, replaceUrlParam, cacheSelectors, getHash, switchImage, mobileNavToggle, productImageSwitch, responsiveVideos, collectionViews, loginForms, resetPasswordSuccess, productPage }
 // eslint-disable-next-line no-undef
 export const ShopifyFormatMoney = typeof Shopify !== 'undefined' ? Shopify.formatMoney : undefined

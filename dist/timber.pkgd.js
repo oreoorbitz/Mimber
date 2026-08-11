@@ -11,14 +11,57 @@ var TimberMepto = (function (exports) {
   function _arrayWithoutHoles(r) {
     if (Array.isArray(r)) return _arrayLikeToArray(r);
   }
+  function _defineProperty(e, r, t) {
+    return (r = _toPropertyKey(r)) in e ? Object.defineProperty(e, r, {
+      value: t,
+      enumerable: true,
+      configurable: true,
+      writable: true
+    }) : e[r] = t, e;
+  }
   function _iterableToArray(r) {
     if ("undefined" != typeof Symbol && null != r[Symbol.iterator] || null != r["@@iterator"]) return Array.from(r);
   }
   function _nonIterableSpread() {
     throw new TypeError("Invalid attempt to spread non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.");
   }
+  function ownKeys(e, r) {
+    var t = Object.keys(e);
+    if (Object.getOwnPropertySymbols) {
+      var o = Object.getOwnPropertySymbols(e);
+      r && (o = o.filter(function (r) {
+        return Object.getOwnPropertyDescriptor(e, r).enumerable;
+      })), t.push.apply(t, o);
+    }
+    return t;
+  }
+  function _objectSpread2(e) {
+    for (var r = 1; r < arguments.length; r++) {
+      var t = null != arguments[r] ? arguments[r] : {};
+      r % 2 ? ownKeys(Object(t), true).forEach(function (r) {
+        _defineProperty(e, r, t[r]);
+      }) : Object.getOwnPropertyDescriptors ? Object.defineProperties(e, Object.getOwnPropertyDescriptors(t)) : ownKeys(Object(t)).forEach(function (r) {
+        Object.defineProperty(e, r, Object.getOwnPropertyDescriptor(t, r));
+      });
+    }
+    return e;
+  }
   function _toConsumableArray(r) {
     return _arrayWithoutHoles(r) || _iterableToArray(r) || _unsupportedIterableToArray(r) || _nonIterableSpread();
+  }
+  function _toPrimitive(t, r) {
+    if ("object" != typeof t || !t) return t;
+    var e = t[Symbol.toPrimitive];
+    if (void 0 !== e) {
+      var i = e.call(t, r);
+      if ("object" != typeof i) return i;
+      throw new TypeError("@@toPrimitive must return a primitive value.");
+    }
+    return ("string" === r ? String : Number)(t);
+  }
+  function _toPropertyKey(t) {
+    var i = _toPrimitive(t, "string");
+    return "symbol" == typeof i ? i : i + "";
   }
   function _unsupportedIterableToArray(r, a) {
     if (r) {
@@ -190,11 +233,11 @@ var TimberMepto = (function (exports) {
     return url + (url.indexOf('?') > 0 ? '&' : '?') + param + '=' + value;
   };
 
-  var q = function q(sel) {
+  var q$1 = function q(sel) {
     var root = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : document;
     return root.querySelector(sel);
   };
-  var qq = function qq(sel) {
+  var qq$1 = function qq(sel) {
     var root = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : document;
     return _toConsumableArray(root.querySelectorAll(sel));
   };
@@ -204,18 +247,18 @@ var TimberMepto = (function (exports) {
     var mepto = $ ? window.mepto || window.jQuery : null;
     var useMepto = !!mepto;
     var sel = function sel(s) {
-      return useMepto ? mepto(s) : qq(s);
+      return useMepto ? mepto(s) : qq$1(s);
     };
     var sel1 = function sel1(s) {
-      return useMepto ? mepto(s) : q(s);
+      return useMepto ? mepto(s) : q$1(s);
     };
 
     // Product thumbs: $('#ProductThumbs').find('a.product-single__thumbnail')
-    var thumbRoot = q('#ProductThumbs');
-    var thumbImages = thumbRoot ? useMepto ? mepto('#ProductThumbs').find('a.product-single__thumbnail') : qq('a.product-single__thumbnail', thumbRoot) : sel('a.product-single__thumbnail__empty__');
+    var thumbRoot = q$1('#ProductThumbs');
+    var thumbImages = thumbRoot ? useMepto ? mepto('#ProductThumbs').find('a.product-single__thumbnail') : qq$1('a.product-single__thumbnail', thumbRoot) : sel('a.product-single__thumbnail__empty__');
     timber.cache = {
       // General
-      $html: useMepto ? mepto('html') : q('html'),
+      $html: useMepto ? mepto('html') : q$1('html'),
       $body: useMepto ? mepto(document.body) : document.body,
       // Navigation
       $navigation: sel1('#AccessibleNav'),
@@ -366,6 +409,92 @@ var TimberMepto = (function (exports) {
     });
   };
 
+  var I18N_DEFAULTS = {
+    addToCart: 'Add to cart',
+    soldOut: 'Sold out',
+    unavailable: 'Unavailable',
+    compareAt: 'Compare at'
+  };
+  var q = function q(sel) {
+    return document.querySelector(sel);
+  };
+  var qq = function qq(sel) {
+    return _toConsumableArray(document.querySelectorAll(sel));
+  };
+  var productPage = function productPage() {
+    var options = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
+    var moneyFormat = options.money_format || window.Shopify && window.Shopify.money_format || '';
+    var variant = options.variant;
+    var i18n = _objectSpread2(_objectSpread2({}, I18N_DEFAULTS), options.i18n || {});
+
+    // selectors — single query per element (bulk reads)
+    var productImage = q('#ProductPhotoImg');
+    var addToCart = q('#AddToCart');
+    var productPrice = q('#ProductPrice');
+    var comparePrice = q('#ComparePrice');
+    var quantityElements = qq('.quantity-selector, label + .js-qty');
+    var addToCartText = q('#AddToCartText');
+    scheduler.mutate(function () {
+      if (variant) {
+        if (variant.featured_image && productImage) {
+          var newImg = variant.featured_image;
+          // Shopify.Image.switchImage is legacy CDN helper (shopify_common.js) — keep if present
+          if (window.Shopify && window.Shopify.Image && typeof window.Shopify.Image.switchImage === 'function') {
+            window.Shopify.Image.switchImage(newImg, productImage, switchImage);
+          } else {
+            switchImage(newImg && newImg.src ? newImg.src : newImg, null, productImage);
+          }
+        }
+        if (variant.available) {
+          if (addToCart) {
+            addToCart.classList.remove('disabled');
+            addToCart.disabled = false;
+          }
+          if (addToCartText) addToCartText.textContent = i18n.addToCart;
+          quantityElements.forEach(function (el) {
+            el.style.display = '';
+          });
+          // mepto .show() sets display block; keep default
+          if (quantityElements.length === 1 && quantityElements[0].style.display === 'none') quantityElements[0].style.display = 'block';
+          quantityElements.forEach(function (el) {
+            if (el.style.display === 'none') el.style.display = 'block';
+          });
+        } else {
+          if (addToCart) {
+            addToCart.classList.add('disabled');
+            addToCart.disabled = true;
+          }
+          if (addToCartText) addToCartText.textContent = i18n.soldOut;
+          quantityElements.forEach(function (el) {
+            el.style.display = 'none';
+          });
+        }
+        if (productPrice) {
+          var fmt = window.Shopify && window.Shopify.formatMoney ? window.Shopify.formatMoney(variant.price, moneyFormat) : String(variant.price);
+          productPrice.innerHTML = fmt;
+        }
+        if (comparePrice) {
+          if (variant.compare_at_price > variant.price) {
+            var cfmt = window.Shopify && window.Shopify.formatMoney ? window.Shopify.formatMoney(variant.compare_at_price, moneyFormat) : String(variant.compare_at_price);
+            comparePrice.innerHTML = "".concat(i18n.compareAt, " ").concat(cfmt);
+            comparePrice.style.display = 'block';
+          } else {
+            comparePrice.style.display = 'none';
+          }
+        }
+      } else {
+        if (addToCart) {
+          addToCart.classList.add('disabled');
+          addToCart.disabled = true;
+        }
+        if (addToCartText) addToCartText.textContent = i18n.unavailable;
+        quantityElements.forEach(function (el) {
+          el.style.display = 'none';
+        });
+      }
+    });
+  };
+
   // timber — slice 2: cache + small utils (see utils.js)
   // Slice 1: prepareTransition + formatMoney
   if (typeof window !== 'undefined') {
@@ -395,6 +524,7 @@ var TimberMepto = (function (exports) {
     window.timber.resetPasswordSuccess = function () {
       return resetPasswordSuccess(window.timber);
     };
+    window.timber.productPage = productPage;
     window.timber.init;
     window.timber.init = function () {
       // FastClick removed (evergreen); keep rest, defer to present slices
@@ -429,6 +559,7 @@ var TimberMepto = (function (exports) {
   exports.mobileNavToggle = mobileNavToggle;
   exports.prepareTransition = prepareTransition;
   exports.productImageSwitch = productImageSwitch;
+  exports.productPage = productPage;
   exports.replaceUrlParam = replaceUrlParam;
   exports.resetPasswordSuccess = resetPasswordSuccess;
   exports.responsiveVideos = responsiveVideos;
