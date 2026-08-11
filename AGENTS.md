@@ -41,7 +41,7 @@ Do not guess past the router — open the doc. `AGENTS.md` stays short.
 | **2 — cache + small utils** | 67-103,193-342 | `cacheSelectors`, `init` (no FastClick), `mobileNavToggle`, `getHash`, `switchImage`, `productImageSwitch`, `responsiveVideos`, `collectionViews`, `loginForms`, `resetPasswordSuccess` | **Done** `aa4342c` (9 modules, `dist 17.7K/8.5K min`) | `querySelectorAll` bulk, `mepto` fallback, `scheduler.mutate` wraps |
 | **3 — productPage** | 203-259 | Variant pricing UI (`variant.available`, `compare_at_price`, `Shopify.formatMoney`) | **Done** (10 modules, `dist 22.9K/11.2K min`) | `classList`/`disabled`/`textContent` in single `mutate`, `Shopify.Image.switchImage` kept |
 | **4 — accessibleNav** | 105-182 | `mouseenter/touchstart`, `focus/blur`, `showDropdown` body `on/off('touchstart')` | **Done** (11 modules, `dist 27.5K/13.4K min`) | `querySelectorAll`, `closest`, `classList`, `setTimeout 250ms` body `touchstart` |
-| **5 — Drawers** | 348-493 | `timber.Drawers` (`$.extend`/`$.proxy`, `trigger`, `trapFocus`, `prepareTransition`) | **Queued** | `Object.assign` vs `$.extend`, `bind` vs `$.proxy`, `CustomEvent` |
+| **5 — Drawers** | 348-493 | `timber.Drawers` (`$.extend`/`$.proxy`, `trigger`, `trapFocus`, `prepareTransition`) | **Done** (12 modules, `dist 36.4K/18K min`) | `Object.assign` vs `$.extend`, `bind` vs `$.proxy`, `CustomEvent` + `mepto trigger` compat, `mutate` |
 | **6 — ajax-cart** | `ajax-cart.js.liquid` 563 | `$.ajax`/`Deferred` + `Handlebars` cart rendering | **Queued** | `fetch` vs `$.ajax`, `Promise`, `DocumentFragment` + `<template>` |
 
 Update this table when you land a slice — LLM points at this file.
@@ -68,7 +68,8 @@ Update this table when you land a slice — LLM points at this file.
 | `src/utils.js` | Slice 2: `mobileNavToggle` etc., `scheduler.mutate` batches | Copy |
 | `src/product-page.js` | Slice 3: `productPage` single `mutate`, `classList`/`disabled`, `Shopify.formatMoney` + `Shopify.Image.switchImage`, `i18n` defaults (Liquid `{{ t | json }}` → `options.i18n`) | Copy |
 | `src/accessible-nav.js` | Slice 4: `accessibleNav` `querySelectorAll`, `closest`, `classList`, `focus/blur` | Copy |
-| `src/scheduler.js` | FastDOM `measure`/`mutate` rAF | Shared by slice 1-4 |
+| `src/drawers.js` | Slice 5: `Drawers` `Object.assign`/`bind`/`CustomEvent`+`mepto trigger`, `prepareTransition`, `mutate`, `trapFocus` | Copy |
+| `src/scheduler.js` | FastDOM `measure`/`mutate` rAF | Shared by slice 1-5 |
 | `src/mepto.js` | `window.mepto \|\| window.jQuery` getter (`$`) | Shared |
 | `src/index.js` | Assembles `window.timber` legacy names, `DOMContentLoaded` auto-init | Entry |
 | `dist/timber.esm.js` / `dist/timber.pkgd.js` / `dist/timber.pkgd.min.js` | Built artifacts — Vite `esnext` + Babel `last 3` | Copy `pkgd.min.js` → client `assets/timber.js` |
@@ -117,7 +118,7 @@ node --check src/*.js
 grep -c "jQuery" assets/timber.js  # → 0 (comments only)
 ```
 
-Dist current (slice 4): `timber.esm.js 25.6K` / `timber.pkgd.js 27.5K` / `timber.pkgd.min.js 13.4K` (`4.35K gzip`). Grows as slices 5-6 land.
+Dist current (slice 5): `timber.esm.js 34.1K` / `timber.pkgd.js 36.4K` / `timber.pkgd.min.js 18K` (`5.51K gzip`). Grows as slice 6 `ajax-cart` lands.
 
 ---
 

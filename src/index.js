@@ -7,6 +7,7 @@ import { cacheSelectors } from './cache.js'
 import { getHash, switchImage, mobileNavToggle, productImageSwitch, responsiveVideos, collectionViews, loginForms, resetPasswordSuccess } from './utils.js'
 import { productPage } from './product-page.js'
 import { accessibleNav } from './accessible-nav.js'
+import { Drawer, drawersInit } from './drawers.js'
 
 if (typeof window !== 'undefined') {
   window.Shopify = window.Shopify || {}
@@ -25,12 +26,14 @@ if (typeof window !== 'undefined') {
   window.timber.resetPasswordSuccess = () => resetPasswordSuccess(window.timber)
   window.timber.productPage = productPage
   window.timber.accessibleNav = () => accessibleNav(window.timber)
+  window.timber.Drawers = Drawer
+  window.timber.drawersInit = () => drawersInit(window.timber)
   const _origInit = window.timber.init
   window.timber.init = () => {
     // FastClick removed (evergreen); keep rest
     cacheSelectors(window.timber)
     try { accessibleNav(window.timber) } catch (_) {}
-    if (typeof window.timber.drawersInit === 'function') try { window.timber.drawersInit() } catch (_) {}
+    try { drawersInit(window.timber) } catch (_) {}
     mobileNavToggle(window.timber)
     productImageSwitch(window.timber)
     responsiveVideos()
@@ -42,6 +45,6 @@ if (typeof window !== 'undefined') {
   else queueMicrotask(() => window.timber.init())
 }
 
-export { prepareTransition, replaceUrlParam, cacheSelectors, getHash, switchImage, mobileNavToggle, productImageSwitch, responsiveVideos, collectionViews, loginForms, resetPasswordSuccess, productPage, accessibleNav }
+export { prepareTransition, replaceUrlParam, cacheSelectors, getHash, switchImage, mobileNavToggle, productImageSwitch, responsiveVideos, collectionViews, loginForms, resetPasswordSuccess, productPage, accessibleNav, Drawer, drawersInit }
 // eslint-disable-next-line no-undef
 export const ShopifyFormatMoney = typeof Shopify !== 'undefined' ? Shopify.formatMoney : undefined

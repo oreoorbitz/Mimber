@@ -11,6 +11,20 @@ var TimberMepto = (function (exports) {
   function _arrayWithoutHoles(r) {
     if (Array.isArray(r)) return _arrayLikeToArray(r);
   }
+  function _classCallCheck(a, n) {
+    if (!(a instanceof n)) throw new TypeError("Cannot call a class as a function");
+  }
+  function _defineProperties(e, r) {
+    for (var t = 0; t < r.length; t++) {
+      var o = r[t];
+      o.enumerable = o.enumerable || false, o.configurable = true, "value" in o && (o.writable = true), Object.defineProperty(e, _toPropertyKey(o.key), o);
+    }
+  }
+  function _createClass(e, r, t) {
+    return r && _defineProperties(e.prototype, r), Object.defineProperty(e, "prototype", {
+      writable: false
+    }), e;
+  }
   function _defineProperty(e, r, t) {
     return (r = _toPropertyKey(r)) in e ? Object.defineProperty(e, r, {
       value: t,
@@ -500,18 +514,18 @@ var TimberMepto = (function (exports) {
 
   var ACTIVE = 'nav-hover';
   var FOCUS = 'nav-focus';
-  var unwrap = function unwrap(el) {
+  var unwrap$1 = function unwrap(el) {
     return el && el[0] ? el[0] : el;
   };
   var toArray = function toArray(els) {
     if (!els) return [];
     if (els.nodeType === 1) return [els];
-    if (typeof els.length === 'number' && els.tagName === undefined) return _toConsumableArray(els).filter(Boolean).map(unwrap).filter(Boolean);
-    return [unwrap(els)].filter(Boolean);
+    if (typeof els.length === 'number' && els.tagName === undefined) return _toConsumableArray(els).filter(Boolean).map(unwrap$1).filter(Boolean);
+    return [unwrap$1(els)].filter(Boolean);
   };
   var accessibleNav = function accessibleNav(timber) {
     var _timber$cache, _timber$cache2;
-    var nav = unwrap((_timber$cache = timber.cache) === null || _timber$cache === void 0 ? void 0 : _timber$cache.$navigation);
+    var nav = unwrap$1((_timber$cache = timber.cache) === null || _timber$cache === void 0 ? void 0 : _timber$cache.$navigation);
     if (!nav) return;
     var allLinks = _toConsumableArray(nav.querySelectorAll('a'));
     var topLevel = _toConsumableArray(nav.querySelectorAll(':scope > li a')).length ? _toConsumableArray(nav.querySelectorAll(':scope > li a')) : _toConsumableArray(nav.children).flatMap(function (li) {
@@ -526,7 +540,7 @@ var TimberMepto = (function (exports) {
     });
     var parents = _toConsumableArray(nav.querySelectorAll('.site-nav--has-dropdown'));
     var subMenuLinks = _toConsumableArray(nav.querySelectorAll('.site-nav__dropdown a'));
-    var body = unwrap((_timber$cache2 = timber.cache) === null || _timber$cache2 === void 0 ? void 0 : _timber$cache2.$body) || document.body;
+    var body = unwrap$1((_timber$cache2 = timber.cache) === null || _timber$cache2 === void 0 ? void 0 : _timber$cache2.$body) || document.body;
     var addFocus = function addFocus(els) {
       return toArray(els).forEach(function (el) {
         return el.classList.add(FOCUS);
@@ -538,7 +552,7 @@ var TimberMepto = (function (exports) {
       });
     };
     var showDropdown = function showDropdown(el) {
-      var node = unwrap(el);
+      var node = unwrap$1(el);
       if (!node) return;
       node.classList.add(ACTIVE);
       setTimeout(function () {
@@ -551,7 +565,7 @@ var TimberMepto = (function (exports) {
       }, 250);
     };
     var hideDropdown = function hideDropdown(el) {
-      var node = unwrap(el);
+      var node = unwrap$1(el);
       if (!node) return;
       node.classList.remove(ACTIVE);
       if (body._mimberHideHandler) {
@@ -560,7 +574,7 @@ var TimberMepto = (function (exports) {
       }
     };
     var handleFocus = function handleFocus(el) {
-      var node = unwrap(el);
+      var node = unwrap$1(el);
       if (!node) return;
       var subMenu = node.nextElementSibling && node.nextElementSibling.tagName === 'UL' ? node.nextElementSibling : null;
       !!(subMenu && subMenu.classList.contains('sub-nav'));
@@ -602,6 +616,206 @@ var TimberMepto = (function (exports) {
     });
   };
 
+  var unwrap = function unwrap(el) {
+    return el && el[0] ? el[0] : el;
+  };
+  var trigger = function trigger(target, name, detail) {
+    var el = unwrap(target) || document.body;
+    el.dispatchEvent(new CustomEvent(name, {
+      bubbles: true,
+      detail: detail
+    }));
+    // also try mepto trigger if available (for compat with $(document).on('beforeDrawerOpen.timber'))
+    try {
+      var mepto = window.mepto || window.jQuery;
+      if (mepto && mepto(target).trigger) mepto(target).trigger(name, detail);
+    } catch (_) {}
+  };
+  var Drawer = /*#__PURE__*/function () {
+    function Drawer(id, position) {
+      var options = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
+      _classCallCheck(this, Drawer);
+      var defaults = {
+        close: '.js-drawer-close',
+        open: '.js-drawer-open-' + position,
+        openClass: 'js-drawer-open',
+        dirOpenClass: 'js-drawer-open-' + position
+      };
+      this.config = Object.assign({}, defaults, options);
+      this.position = position;
+
+      // $nodes: parent = body,html ; page = #PageContainer ; moved = .is-moved-by-drawer
+      this.nodes = {
+        parent: [document.body, document.documentElement].filter(Boolean),
+        page: document.getElementById('PageContainer'),
+        moved: _toConsumableArray(document.querySelectorAll('.is-moved-by-drawer'))
+      };
+      this.drawer = document.getElementById(id);
+      if (!this.drawer) return false;
+      this.drawerIsOpen = false;
+      this.init();
+    }
+    return _createClass(Drawer, [{
+      key: "init",
+      value: function init() {
+        var _this = this;
+        var openEls = _toConsumableArray(document.querySelectorAll(this.config.open));
+        openEls.forEach(function (el) {
+          return el.addEventListener('click', _this.open.bind(_this));
+        });
+        var closeEls = this.drawer ? _toConsumableArray(this.drawer.querySelectorAll(this.config.close)) : [];
+        closeEls.forEach(function (el) {
+          return el.addEventListener('click', _this.close.bind(_this));
+        });
+      }
+    }, {
+      key: "open",
+      value: function open(evt) {
+        var _this2 = this;
+        var externalCall = false;
+        if (evt) evt.preventDefault();else externalCall = true;
+        if (evt && evt.stopPropagation) {
+          evt.stopPropagation();
+          this.activeSource = evt.currentTarget;
+        }
+        if (this.drawerIsOpen && !externalCall) return this.close();
+        var body = window.timber && window.timber.cache && unwrap(window.timber.cache.$body) || document.body;
+        trigger(body, 'beforeDrawerOpen.timber', this);
+        scheduler.mutate(function () {
+          _this2.nodes.moved.forEach(function (el) {
+            return el.classList.add('is-transitioning');
+          });
+          prepareTransition(_this2.drawer);
+          _this2.nodes.parent.forEach(function (el) {
+            return el.classList.add(_this2.config.openClass, _this2.config.dirOpenClass);
+          });
+        });
+        this.drawerIsOpen = true;
+        this.trapFocus(this.drawer, 'drawer_focus');
+        if (this.config.onDrawerOpen && typeof this.config.onDrawerOpen === 'function' && !externalCall) {
+          this.config.onDrawerOpen();
+        }
+        if (this.activeSource && this.activeSource.getAttribute && this.activeSource.getAttribute('aria-expanded') !== null) {
+          this.activeSource.setAttribute('aria-expanded', 'true');
+        }
+
+        // lock scrolling + page click close (namespaced .drawer)
+        if (this.nodes.page) {
+          this._onTouchMove = function (e) {
+            e.preventDefault();
+            return false;
+          };
+          this._onPageClick = function (e) {
+            _this2.close();
+            e.preventDefault();
+            return false;
+          };
+          this.nodes.page.addEventListener('touchmove', this._onTouchMove, {
+            passive: false
+          });
+          this.nodes.page.addEventListener('click', this._onPageClick);
+        }
+        trigger(body, 'afterDrawerOpen.timber', this);
+      }
+    }, {
+      key: "close",
+      value: function close() {
+        var _this3 = this;
+        if (!this.drawerIsOpen) return;
+        var body = window.timber && window.timber.cache && unwrap(window.timber.cache.$body) || document.body;
+        trigger(body, 'beforeDrawerClose.timber', this);
+        if (document.activeElement && document.activeElement.blur) {
+          try {
+            document.activeElement.blur();
+          } catch (_) {}
+          // also mepto trigger blur for compat
+          try {
+            var mepto = window.mepto || window.jQuery;
+            if (mepto) mepto(document.activeElement).trigger('blur');
+          } catch (_) {}
+        }
+        scheduler.mutate(function () {
+          _this3.nodes.moved.forEach(function (el) {
+            return prepareTransition(el);
+          });
+          prepareTransition(_this3.drawer);
+          _this3.nodes.parent.forEach(function (el) {
+            return el.classList.remove(_this3.config.dirOpenClass, _this3.config.openClass);
+          });
+        });
+        this.drawerIsOpen = false;
+        this.removeTrapFocus(this.drawer, 'drawer_focus');
+        if (this.nodes.page) {
+          if (this._onTouchMove) this.nodes.page.removeEventListener('touchmove', this._onTouchMove);
+          if (this._onPageClick) this.nodes.page.removeEventListener('click', this._onPageClick);
+          // remove any remaining .drawer handlers (compat: off('.drawer') removed all)
+          this._onTouchMove = null;
+          this._onPageClick = null;
+        }
+        trigger(body, 'afterDrawerClose.timber', this);
+      }
+    }, {
+      key: "trapFocus",
+      value: function trapFocus(container, eventNamespace) {
+        var el = unwrap(container);
+        if (!el) return;
+        var eventName = eventNamespace ? 'focusin.' + eventNamespace : 'focusin';
+        // store handler for removal
+        this._focusHandler = function (evt) {
+          if (el !== evt.target && !el.contains(evt.target)) el.focus();
+        };
+        this._focusEventName = eventName;
+        el.setAttribute('tabindex', '-1');
+        el.focus();
+        document.addEventListener('focusin', this._focusHandler);
+        // also namespaced compat via mepto if available
+        try {
+          var mepto = window.mepto || window.jQuery;
+          if (mepto) mepto(document).on(eventName, this._focusHandler);
+        } catch (_) {}
+      }
+    }, {
+      key: "removeTrapFocus",
+      value: function removeTrapFocus(container, eventNamespace) {
+        var el = unwrap(container);
+        if (!el) return;
+        var eventName = eventNamespace ? 'focusin.' + eventNamespace : 'focusin';
+        el.removeAttribute('tabindex');
+        if (this._focusHandler) {
+          document.removeEventListener('focusin', this._focusHandler);
+          try {
+            var mepto = window.mepto || window.jQuery;
+            if (mepto) mepto(document).off(eventName);
+          } catch (_) {}
+          this._focusHandler = null;
+        } else {
+          document.removeEventListener('focusin', function () {});
+          try {
+            var _mepto = window.mepto || window.jQuery;
+            if (_mepto) _mepto(document).off(eventName);
+          } catch (_) {}
+        }
+      }
+    }]);
+  }();
+  var drawersInit = function drawersInit(timber) {
+    timber.LeftDrawer = new Drawer('NavDrawer', 'left');
+    // Preserve Liquid gate: only init RightDrawer if ajaxCart present or setting says drawer
+    // Original: {% if settings.ajax_cart_method == "drawer" %} timber.RightDrawer = new timber.Drawers('CartDrawer','right',{onDrawerOpen: ajaxCart.load}); {% endif %}
+    // Modern: check window.ajaxCart or window.settings
+    var ajaxCart = window.ajaxCart;
+    var shouldInitRight = function () {
+      // If Liquid already rendered, timber.RightDrawer may be expected; init if CartDrawer exists
+      if (document.getElementById('CartDrawer')) return true;
+      return !!ajaxCart;
+    }();
+    if (shouldInitRight) {
+      timber.RightDrawer = new Drawer('CartDrawer', 'right', {
+        onDrawerOpen: ajaxCart && ajaxCart.load ? ajaxCart.load : undefined
+      });
+    }
+  };
+
   // timber — slice 2: cache + small utils (see utils.js)
   // Slice 1: prepareTransition + formatMoney
   if (typeof window !== 'undefined') {
@@ -635,6 +849,10 @@ var TimberMepto = (function (exports) {
     window.timber.accessibleNav = function () {
       return accessibleNav(window.timber);
     };
+    window.timber.Drawers = Drawer;
+    window.timber.drawersInit = function () {
+      return drawersInit(window.timber);
+    };
     window.timber.init;
     window.timber.init = function () {
       // FastClick removed (evergreen); keep rest
@@ -642,8 +860,8 @@ var TimberMepto = (function (exports) {
       try {
         accessibleNav(window.timber);
       } catch (_) {}
-      if (typeof window.timber.drawersInit === 'function') try {
-        window.timber.drawersInit();
+      try {
+        drawersInit(window.timber);
       } catch (_) {}
       mobileNavToggle(window.timber);
       productImageSwitch(window.timber);
@@ -661,10 +879,12 @@ var TimberMepto = (function (exports) {
   // eslint-disable-next-line no-undef
   var ShopifyFormatMoney = typeof Shopify !== 'undefined' ? Shopify.formatMoney : undefined;
 
+  exports.Drawer = Drawer;
   exports.ShopifyFormatMoney = ShopifyFormatMoney;
   exports.accessibleNav = accessibleNav;
   exports.cacheSelectors = cacheSelectors;
   exports.collectionViews = collectionViews;
+  exports.drawersInit = drawersInit;
   exports.getHash = getHash;
   exports.loginForms = loginForms;
   exports.mobileNavToggle = mobileNavToggle;
