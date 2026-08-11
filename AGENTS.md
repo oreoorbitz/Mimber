@@ -18,13 +18,15 @@ Mimber is a **reference DB**, not an installable theme. Fork of `Shopify/Timber@
 
 Timber is **Shopify 1.0** (`assets/layout/snippets/templates/config`). `shopify theme` CLI is 2.0 and rejects 1.0. Use **bundled ThemeKit fork** (`oreoorbitz/themekit`, Go, vendored at `vendor/themekit` + bundled with Mepto `meptos` for customization) for now. Order: JS → CSS → Liquid (this repo does JS first, CSS/Liquid last).
 
-| Step | Command | What |
-|---|---|---|
-| 1 | `cp config.yml.example config.yml` | Fill `store`, `password` (private app), `theme_id` or `THEMEKIT_STORE/THEMEKIT_PASSWORD/THEMEKIT_THEME_ID` env |
-| 2 | `npm run build` | Vite `esnext+Babel last3` → `dist/timber.*.js` + `npm run build:theme` → `dist/theme` (Shopify 1.0 structure + modern `assets/timber.js`) |
-| 3 | `node scripts/themekit.mjs deploy` or `npm run theme:deploy` | Upload `dist/theme` via **bundled fork** `vendor/themekit/bin/theme` (built via `npm run themekit:build` with Go, else falls back to `@shopify/themekit` S3 binary or `theme` on PATH) |
-| 4 | `npm run theme:preview:url` | Prints `https://{store}/?_ab=0&_fd=0&_sc=1&preview_theme_id={theme_id}` (x.y + z from `config.yml`) |
-| 5 | `npx playwright test --grep preview` or `npm run test:preview` | Playwright opens preview URL, asserts `body` visible, screenshots `playwright-report/preview.png` |
+**Go orchestrator** (`go` + `Cobra`): `cmd/mimber` wraps all three — `vendor/themekit/cmd/mimber` is the canonical `mimber` CLI (Go) importing ThemeKit as lib; `Mimber/cmd/mimber/main.go` is the thin proxy (`go run ./cmd/mimber`). Build a single `bin/mimber` binary (`go build -o bin/mimber ./cmd/mimber`) that LLM can run without Node.
+
+| Step | Command (Go) | Command (Node fallback) | What |
+|---|---|---|---|
+| 1 | `cp config.yml.example config.yml` | same | Fill `store`, `password` (private app), `theme_id` or `THEMEKIT_STORE/THEMEKIT_PASSWORD/THEMEKIT_THEME_ID` env |
+| 2 | `go run ./cmd/mimber build` (`npm run mimber:build`) | `npm run build` | Vite `esnext+Babel last3` → `dist/timber.*.js` + `npm run build:theme` → `dist/theme` (Shopify 1.0 structure + modern `assets/timber.js`) |
+| 3 | `go run ./cmd/mimber deploy` (`npm run mimber:deploy`) | `node scripts/themekit.mjs deploy` / `npm run theme:deploy` | Upload `dist/theme` via **bundled fork** `vendor/themekit/bin/theme` (built via `npm run themekit:build` with Go, else falls back to `@shopify/themekit` S3 binary or `theme` on PATH) |
+| 4 | `go run ./cmd/mimber preview --url` (`npm run mimber:preview`) | Prints `https://{store}/?_ab=0&_fd=0&_sc=1&preview_theme_id={theme_id}` (x.y + z from `config.yml` / `--store`/`--theme-id`) |
+| 5 | `go run ./cmd/mimber harness --preview` (`npm run mimber:harness`) | **Go orchestrated**: build → deploy → `playwright --grep preview` |
 | Local only (no store) | `npx playwright test --grep local` | Asserts `dist/theme` structure + bundle (no network) — 2 tests, ~0.6s |
 
 Env: `THEMEKIT_STORE=foo.myshopify.com THEMEKIT_THEME_ID=123456789 THEMEKIT_PASSWORD=xxx npm run test:preview`.
@@ -95,7 +97,8 @@ Update this table when you land a slice — LLM points at this file.
 | `config.yml.example` | ThemeKit legacy config (store + `theme_id` + `preview_theme_id` in preview URL) | `cp config.yml.example config.yml`, fill `x.y` + `z` |
 | `scripts/build-theme.mjs` | Copies `assets/layout/config/locales/snippets/templates` → `dist/theme` + overlays `dist/timber.pkgd.min.js` | `npm run build:theme` (also `npm run build`) |
 | `scripts/themekit.mjs` | Fork wrapper — resolves `vendor/themekit/bin/theme` → `@shopify/themekit` → `theme` PATH | `node scripts/themekit.mjs deploy/watch --help` |
-| `playwright.config.mjs` + `tests/preview.spec.js` | Playwright harness — `_ab=0&_fd=0&_sc=1&preview_theme_id=z` | `npm run test:preview` (`--grep preview` for remote, `--grep local` for offline) |
+| `cmd/mimber/main.go` + `vendor/themekit/cmd/mimber/` | **Go orchestrator** `mimber` (`Cobra`: `build`/`deploy`/`preview`/`harness`) — `go run ./cmd/mimber` or `bin/mimber` | `go run ./cmd/mimber build/deploy/preview/harness` |
+| `playwright.config.mjs` + `tests/preview.spec.js` | Playwright harness — `_ab=0&_fd=0&_sc=1&preview_theme_id=z` | `npm run test:preview` / `go run ./cmd/mimber harness --preview` |
 | `package.json` (`type:module`, `browserslist last 3`), `vite.config.mjs`+`vite.min.config.mjs`, `babel.config.json` | Build parity with `flickity-mepto`/`currencies` | Reuse in client build |
 | `README.md` | Upstream Timber README (deprecated notice) — not orchestrator | Ignore |
 | `spec/` | Timber i18n Ruby tests — not JS modernization | Ignore |
@@ -135,14 +138,21 @@ Never vendor Mepto silently — `{{ 'mepto.js' \| asset_url \| script_tag }}` fi
 ```bash
 nvm use                          # 22 LTS (or Node >=18)
 npm install                      # vendor/themekit fork already cloned; @shopify/themekit fallback via postinstall
+# Go orchestrator (preferred — single binary, no npm):
+go run ./cmd/mimber build        # or npm run mimber:build → same (Vite + build:theme)
+go run ./cmd/mimber preview --url --store x.y --theme-id z  # or npm run mimber:preview
+go run ./cmd/mimber harness --preview  # or npm run mimber:harness — build→deploy→playwright preview
+# Build single binary: go build -o bin/mimber ./cmd/mimber && ./bin/mimber --help
+
+# Node fallback (no Go):
 npm run build                    # clean + vite + vite.min + banner + build:theme → dist/* + dist/theme (needs Node 22)
 # optional: build fork binary (needs Go): npm run themekit:build  # → vendor/themekit/bin/theme
 npx playwright install --with-deps chromium  # first time only
 npx playwright test --grep local # offline: asserts dist/theme structure
-# ThemeKit preview (needs store):
+# ThemeKit preview (needs store) — Node fallback:
 cp config.yml.example config.yml # fill store = x.y (your-store.myshopify.com), theme_id = z, password
 node scripts/themekit.mjs deploy # or npm run theme:deploy (uses oreoorbitz/themekit fork → @shopify/themekit fallback)
-npm run theme:preview:url        # prints https://x.y/?_ab=0&_fd=0&_sc=1&preview_theme_id=z
+go run ./cmd/mimber preview --url # or npm run theme:preview:url — prints https://x.y/?_ab=0&_fd=0&_sc=1&preview_theme_id=z
 npx playwright test --grep preview  # opens preview URL (x.y + z)
 node --check src/*.js
 grep -c "jQuery" dist/theme/assets/timber.js  # → 0 (comments only)
