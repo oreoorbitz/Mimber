@@ -12,6 +12,22 @@ Mimber is a **reference DB**, not an installable theme. Fork of `Shopify/Timber@
 2. Tell LLM: "Read `mimber-reference/AGENTS.md` then do the task."
 3. LLM diffs `mimber/assets/timber.js.liquid` vs `client/assets/timber.js` (`ajax-cart.js`) and applies slices below — preserves client business logic, only swaps jQuery/polyfill surface.
 4. Build in Mimber, copy `dist/timber.pkgd.min.js` → `client/assets/timber.js` (keep `.liquid` header if any), update `layout/theme.liquid` script tags.
+5. For preview: see **Preview harness (ThemeKit + Playwright)** below — `config.yml` + `dist/theme`.
+
+## Preview harness (ThemeKit + Playwright) — LLM can run without `shopify theme` 2.0
+
+Timber is **Shopify 1.0** (`assets/layout/snippets/templates/config`). `shopify theme` CLI is 2.0 and rejects 1.0. Use **legacy ThemeKit** (`@shopify/themekit`, Go binary) for now. Order: JS → CSS → Liquid (this repo does JS first, CSS/Liquid last).
+
+| Step | Command | What |
+|---|---|---|
+| 1 | `cp config.yml.example config.yml` | Fill `store`, `password` (private app), `theme_id` or `THEMEKIT_STORE/THEMEKIT_PASSWORD/THEMEKIT_THEME_ID` env |
+| 2 | `npm run build` | Vite `esnext+Babel last3` → `dist/timber.*.js` + `npm run build:theme` → `dist/theme` (Shopify 1.0 structure + modern `assets/timber.js`) |
+| 3 | `npx shopify-themekit deploy` or `npm run theme:deploy` | Upload `dist/theme` to store (needs `bin/theme` binary via `postinstall` `node lib/install.js`) |
+| 4 | `npm run theme:preview:url` | Prints `https://{store}/?_ab=0&_fd=0&_sc=1&preview_theme_id={theme_id}` (x.y + z from `config.yml`) |
+| 5 | `npx playwright test --grep preview` or `npm run test:preview` | Playwright opens preview URL, asserts `body` visible, screenshots `playwright-report/preview.png` |
+| Local only (no store) | `npx playwright test --grep local` | Asserts `dist/theme` structure + bundle (no network) — 2 tests, ~0.6s |
+
+Env: `THEMEKIT_STORE=foo.myshopify.com THEMEKIT_THEME_ID=123456789 THEMEKIT_PASSWORD=xxx npm run test:preview`.
 
 ---
 
@@ -74,6 +90,10 @@ Update this table when you land a slice — LLM points at this file.
 | `src/mepto.js` | `window.mepto \|\| window.jQuery` getter (`$`) | Shared |
 | `src/index.js` | Assembles `window.timber` legacy names, `DOMContentLoaded` auto-init | Entry |
 | `dist/timber.esm.js` / `dist/timber.pkgd.js` / `dist/timber.pkgd.min.js` | Built artifacts — Vite `esnext` + Babel `last 3` | Copy `pkgd.min.js` → client `assets/timber.js` |
+| `dist/theme/` | **Shopify 1.0 theme for ThemeKit** — `assets/timber.js` (modern), `layout/theme.liquid`, `config/`, `snippets/`, `templates/` | `npx shopify-themekit deploy` uploads `dist/theme` (`directory: dist/theme` in `config.yml`) |
+| `config.yml.example` | ThemeKit legacy config (store + `theme_id` + `preview_theme_id` in preview URL) | `cp config.yml.example config.yml`, fill `x.y` + `z` |
+| `scripts/build-theme.mjs` | Copies `assets/layout/config/locales/snippets/templates` → `dist/theme` + overlays `dist/timber.pkgd.min.js` | `npm run build:theme` (also `npm run build`) |
+| `playwright.config.mjs` + `tests/preview.spec.js` | Playwright harness — `_ab=0&_fd=0&_sc=1&preview_theme_id=z` | `npm run test:preview` (`--grep preview` for remote, `--grep local` for offline) |
 | `package.json` (`type:module`, `browserslist last 3`), `vite.config.mjs`+`vite.min.config.mjs`, `babel.config.json` | Build parity with `flickity-mepto`/`currencies` | Reuse in client build |
 | `README.md` | Upstream Timber README (deprecated notice) — not orchestrator | Ignore |
 | `spec/` | Timber i18n Ruby tests — not JS modernization | Ignore |
@@ -112,11 +132,17 @@ Never vendor Mepto silently — `{{ 'mepto.js' \| asset_url \| script_tag }}` fi
 
 ```bash
 nvm use                          # 22 LTS (or Node >=18)
-npm install
-npm run build                    # clean + vite build + vite.min + banner → dist/* (needs Node 22 for esnext)
+npm install                      # also fetches ThemeKit Go binary into @shopify/themekit/bin/theme
+npm run build                    # clean + vite + vite.min + banner + build:theme → dist/* + dist/theme (needs Node 22)
+npx playwright install --with-deps chromium  # first time only
+npx playwright test --grep local # offline: asserts dist/theme structure
+# ThemeKit preview (needs store):
+cp config.yml.example config.yml # fill store = x.y (your-store.myshopify.com), theme_id = z, password
+npx shopify-themekit deploy      # or npm run theme:deploy
+npm run theme:preview:url        # prints https://x.y/?_ab=0&_fd=0&_sc=1&preview_theme_id=z
+npx playwright test --grep preview  # opens preview URL (x.y + z)
 node --check src/*.js
-# jQuery purge check in client after copy:
-grep -c "jQuery" assets/timber.js  # → 0 (comments only)
+grep -c "jQuery" dist/theme/assets/timber.js  # → 0 (comments only)
 ```
 
 Dist current (slice 6): `timber.esm.js 60.1K` / `timber.pkgd.js 63.8K` / `timber.pkgd.min.js 32.1K` (`9.7K gzip`). All `timber.js.liquid` (496L) + `ajax-cart.js.liquid` (563L) = **1059L** modernized — `timber.js` 15K + `ajax-cart` 17K → **63.8K pkgd / 32K min** (Handlebars 46K kept external).

@@ -37,6 +37,11 @@ Icon?
 ehthumbs.db
 Thumbs.db
 
+# Mimber modern — dist/theme is built, keep for deploy but ignore preview artifacts
+playwright-report/
+test-results/
+.playwright/
+
 # Custom #
 ######################
 *.sass-cache*

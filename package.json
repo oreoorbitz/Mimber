@@ -5,23 +5,39 @@
   "type": "module",
   "main": "dist/timber.pkgd.js",
   "module": "dist/timber.esm.js",
-  "browserslist": ["last 3 versions"],
+  "browserslist": [
+    "last 3 versions"
+  ],
   "scripts": {
     "clean": "node -e \"fs.rmSync('dist',{recursive:true,force:true})\"",
-    "build": "npm run clean && vite build && npm run build:min && npm run build:banner",
+    "build": "npm run clean && vite build && npm run build:min && npm run build:banner && npm run build:theme",
     "build:min": "vite build --config vite.min.config.mjs",
     "build:banner": "node --input-type=module -e \"import fs from 'fs';const pkg=JSON.parse(fs.readFileSync('./package.json','utf8'));const b='/*! Mimber Mepto v'+pkg.version+' — Mepto-integrated, jQuery-free */\\n';['dist/timber.esm.min.js','dist/timber.pkgd.min.js'].forEach(f=>{let c=fs.readFileSync(f,'utf8');if(!c.startsWith('/*!')){fs.writeFileSync(f,b+c);console.log('banner',f)}})\"",
+    "build:theme": "node scripts/build-theme.mjs",
     "dev": "vite build --watch",
-    "lint": "npx eslint src --ext .js"
+    "lint": "npx eslint src --ext .js",
+    "theme:check": "npx theme check --path dist/theme 2>&1 | head -n 100; echo \"(use shopify theme check for 2.0; ThemeKit theme is 1.0)\"",
+    "theme:watch": "npx theme watch --config config.yml",
+    "theme:deploy": "npx theme deploy --config config.yml",
+    "theme:preview:url": "node -e \"import fs from 'fs'; const y=fs.readFileSync('./config.yml','utf8'); const s=(y.match(/store:\\s*(\\S+)/)||[])[1]||process.env.THEMEKIT_STORE||'your-store.myshopify.com'; const t=(y.match(/theme_id:\\s*\\\"?(\\d+)/)||[])[1]||process.env.THEMEKIT_THEME_ID||'z'; console.log('https://'+s.replace(/^https?:\\/\\//,'')+'/?_ab=0&_fd=0&_sc=1&preview_theme_id='+t)\"",
+    "preview": "npm run build:theme && npx playwright test --grep preview",
+    "test": "npx playwright test",
+    "test:preview": "npx playwright test --grep preview"
   },
-  "peerDependencies": { "meptos": ">=2.0.0" },
+  "peerDependencies": {
+    "meptos": ">=2.0.0"
+  },
   "devDependencies": {
     "@babel/cli": "^7.24.0",
     "@babel/core": "^7.24.0",
     "@babel/preset-env": "^7.24.0",
+    "@playwright/test": "^1.50.0",
     "@rollup/plugin-babel": "^7.1.0",
-    "vite": "^5.4.21",
-    "terser": "^5.26.0"
+    "@shopify/themekit": "^1.1.10",
+    "terser": "^5.26.0",
+    "vite": "^5.4.21"
   },
-  "engines": { "node": ">=18" }
+  "engines": {
+    "node": ">=18"
+  }
 }

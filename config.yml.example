@@ -1,0 +1,28 @@
+# ThemeKit legacy (1.0) — example for Mimber / client Timber themes
+# Why ThemeKit not `shopify theme` (2.0 CLI): Timber is Shopify 1.0 structure (assets/layout/snippets/templates/config)
+# which 2.0 CLI rejects. ThemeKit works with 1.0. Modernize JS → CSS → Liquid in that order.
+#
+# Usage:
+#   cp config.yml.example config.yml          # then fill store/password/theme_id (or use env)
+#   npx shopify-themekit watch  # or: npm run theme:watch  (legacy ThemeKit, not `shopify theme` 2.0)
+#   npm run theme:deploy        # shopify-themekit deploy
+#
+# Preview URL (after deploy): https://{store}/?_ab=0&_fd=0&_sc=1&preview_theme_id={theme_id}
+# LLM harness will run `npx playwright test --grep preview` against that URL (via @shopify/themekit).
+# Install: npm install (postinstall runs `shopify-themekit install` to fetch the Go binary into node_modules/@shopify/themekit/bin/theme).
+
+development:
+  password: ${THEMEKIT_PASSWORD:-your-private-app-password}
+  theme_id: "${THEMEKIT_THEME_ID:-123456789}"
+  store: ${THEMEKIT_STORE:-your-store.myshopify.com}
+  directory: dist/theme
+  ignores:
+    - config/settings_data.json
+
+production:
+  password: ${THEMEKIT_PASSWORD:-}
+  theme_id: "${THEMEKIT_THEME_ID:-}"
+  store: ${THEMEKIT_STORE:-}
+  directory: dist/theme
+  ignores:
+    - config/settings_data.json

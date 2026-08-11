@@ -34,8 +34,12 @@
 | `assets/timber.js.liquid` | Core theme JS (`prepareTransition`, `Shopify` helpers) | `assets/timber.js` or `theme.js` fork | Mepto `window.mepto \|\| jQuery`, `Object.assign` vs `$.extend`, `classList` vs `addClass` |
 | `assets/ajax-cart.js.liquid` | Ajax cart (`/cart.js`, `Handlebars`) | `assets/ajax-cart.js` or `cart.js` | `fetch` vs `$.ajax`, `Promise` vs `Deferred`, `DocumentFragment` |
 | `assets/handlebars.min.js` | `v1.3.0` templating | `assets/handlebars.min.js` may be customized | Keep or replace — audit `grep tmpl` first |
-| `assets/timber.scss.liquid` | Base styles | `assets/theme.scss` fork | Do not modernize via Mimber — diff only |
+| `assets/timber.scss.liquid` | Base styles | `assets/theme.scss` fork | Do not modernize via Mimber — diff only (CSS is next phase, keep 1.0 Liquid for now) |
 | `layout/theme.liquid:37,395` | `jQuery 1.12.4` CDN + 3 polyfills | `layout/theme.liquid` | Replace `jquery` CDN with `mepto.js` after Mepto builds are staged |
+| `dist/theme/` | **Built Shopify 1.0 theme** (JS modernized, `assets/timber.js` replaced) | Client `dist/theme` or direct `assets/` | `npm run build` → `dist/theme` is ThemeKit deploy target (`directory: dist/theme`) |
+| `config.yml.example` | ThemeKit legacy config + preview URL template | Client `config.yml` | `cp config.yml.example config.yml`, set `x.y` store + `z` `theme_id` |
+| `scripts/build-theme.mjs` | Assembles `dist/theme` (copy `assets/layout/config/locales/snippets/templates` + overlay `dist/timber.pkgd.min.js`) | — | `npm run build:theme` |
+| `playwright.config.mjs` + `tests/preview.spec.js` | Playwright harness for preview `_ab=0&_fd=0&_sc=1&preview_theme_id=z` | — | `npx playwright test --grep preview` (remote) or `--grep local` (offline) |
 
 ## Common Client Divergences to Preserve
 
@@ -45,8 +49,10 @@
 
 ## Verification (client theme)
 
-- `node --check assets/timber.js`, `grep -c "jQuery" assets/timber.js` → 0 (comments only).
+- `node --check dist/theme/assets/timber.js`, `grep -c "jQuery" dist/theme/assets/timber.js` → 0 (comments only).
+- `npx playwright test --grep local` — 2 tests for `dist/theme` structure + `config.yml.example`.
 - `shopify theme check` — no `fastclick`/`respond` 404s (since deleted in Mimber, remove tags in client).
+- Preview (with store): `cp config.yml.example config.yml` → fill `x.y` store + `z` `theme_id` → `npx shopify-themekit deploy` → `npx playwright test --grep preview` opens `https://x.y/?_ab=0&_fd=0&_sc=1&preview_theme_id=z`.
 - Manual: cart add/remove, `prepareTransition` (drawer), handlebars render, currency switch if `currencies-mepto` staged.
 
 ## Links
