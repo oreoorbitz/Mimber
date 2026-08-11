@@ -8,6 +8,8 @@ import { getHash, switchImage, mobileNavToggle, productImageSwitch, responsiveVi
 import { productPage } from './product-page.js'
 import { accessibleNav } from './accessible-nav.js'
 import { Drawer, drawersInit } from './drawers.js'
+import { ajaxCart } from './ajax-cart.js'
+import { ShopifyAPI as _ShopifyAPI } from './shopify-api.js'
 
 if (typeof window !== 'undefined') {
   window.Shopify = window.Shopify || {}
@@ -28,6 +30,8 @@ if (typeof window !== 'undefined') {
   window.timber.accessibleNav = () => accessibleNav(window.timber)
   window.timber.Drawers = Drawer
   window.timber.drawersInit = () => drawersInit(window.timber)
+  window.ajaxCart = ajaxCart
+  window.ShopifyAPI = _ShopifyAPI
   const _origInit = window.timber.init
   window.timber.init = () => {
     // FastClick removed (evergreen); keep rest
@@ -45,6 +49,6 @@ if (typeof window !== 'undefined') {
   else queueMicrotask(() => window.timber.init())
 }
 
-export { prepareTransition, replaceUrlParam, cacheSelectors, getHash, switchImage, mobileNavToggle, productImageSwitch, responsiveVideos, collectionViews, loginForms, resetPasswordSuccess, productPage, accessibleNav, Drawer, drawersInit }
+export { prepareTransition, replaceUrlParam, cacheSelectors, getHash, switchImage, mobileNavToggle, productImageSwitch, responsiveVideos, collectionViews, loginForms, resetPasswordSuccess, productPage, accessibleNav, Drawer, drawersInit, ajaxCart, _ShopifyAPI as ShopifyAPI }
 // eslint-disable-next-line no-undef
 export const ShopifyFormatMoney = typeof Shopify !== 'undefined' ? Shopify.formatMoney : undefined

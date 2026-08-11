@@ -1,0 +1,357 @@
+// ajaxCart — Slice 6 (mepto/native, fetch via ShopifyAPI, Handlebars kept)
+// Modern: Object.assign vs $.extend, querySelectorAll vs $, addEventListener vs $.on, scheduler.mutate vs direct DOM.
+
+import { ShopifyAPI } from './shopify-api.js'
+import { scheduler } from './scheduler.js'
+
+const q = (sel, root = document) => root.querySelector(sel)
+const qq = (sel, root = document) => [...root.querySelectorAll(sel)]
+
+const I18N = {
+  empty: 'Your cart is empty',
+  savingsHtml: 'You save [savings]',
+}
+
+let settings = {
+  formSelector: 'form[action^="/cart/add"]',
+  cartContainer: '#CartContainer',
+  addToCartSelector: 'input[type="submit"]',
+  cartCountSelector: null,
+  cartCostSelector: null,
+  moneyFormat: '${{amount}}',
+  disableAjaxCart: false,
+  enableQtySelectors: true,
+  i18n: I18N,
+}
+
+let isUpdating = false
+let bodyEl, formContainer, addToCart, cartContainer, cartCountSelector, cartCostSelector
+
+const unwrap = (el) => (el && el[0] ? el[0] : el)
+
+const triggerBody = (name, detail) => {
+  const b = bodyEl || document.body
+  b.dispatchEvent(new CustomEvent(name, { bubbles: true, detail }))
+  try {
+    const mepto = window.mepto || window.jQuery
+    if (mepto && mepto(b).trigger) mepto(b).trigger(name, detail)
+  } catch (_) {}
+}
+
+const updateCountPrice = (cart) => {
+  scheduler.mutate(() => {
+    if (cartCountSelector) {
+      const el = unwrap(cartCountSelector) || cartCountSelector
+      // cartCountSelector may be NodeList/array
+      const list = cartCountSelector.length !== undefined && cartCountSelector.tagName === undefined ? [...cartCountSelector] : [cartCountSelector]
+      list.forEach((node) => {
+        const n = unwrap(node) || node
+        if (!n || !n.textContent === undefined) return
+        n.textContent = String(cart.item_count)
+        n.classList.remove('hidden-count')
+        if (cart.item_count === 0) n.classList.add('hidden-count')
+        // compat: .html() fallback
+        if (n.innerHTML !== undefined && typeof cart.item_count !== 'undefined') n.innerHTML = String(cart.item_count)
+      })
+      void el
+    }
+    if (cartCostSelector) {
+      const fmt = window.Shopify && window.Shopify.formatMoney ? window.Shopify.formatMoney(cart.total_price, settings.moneyFormat) : String(cart.total_price)
+      const list = cartCostSelector.length !== undefined && cartCostSelector.tagName === undefined ? [...cartCostSelector] : [cartCostSelector]
+      list.forEach((node) => {
+        const n = unwrap(node) || node
+        if (!n) return
+        if (n.innerHTML !== undefined) n.innerHTML = fmt
+      })
+    }
+  })
+}
+
+const formOverride = () => {
+  if (!formContainer || !formContainer.length) return
+  const forms = formContainer.length !== undefined && formContainer.tagName === undefined ? [...formContainer] : [formContainer]
+  forms.forEach((form) => {
+    const node = unwrap(form) || form
+    if (!node || !node.addEventListener) return
+    node.addEventListener('submit', (evt) => {
+      evt.preventDefault()
+      const adds = addToCart ? (addToCart.length !== undefined && addToCart.tagName === undefined ? [...addToCart] : [addToCart]) : []
+      adds.forEach((a) => { const n = unwrap(a) || a; if (n && n.classList) { n.classList.remove('is-added'); n.classList.add('is-adding') } })
+      qq('.qty-error').forEach((el) => el.remove())
+      ShopifyAPI.addItemFromForm(evt.target, itemAddedCallback, itemErrorCallback)
+    })
+  })
+}
+
+const itemAddedCallback = () => {
+  const adds = addToCart ? (addToCart.length !== undefined && addToCart.tagName === undefined ? [...addToCart] : [addToCart]) : []
+  adds.forEach((a) => { const n = unwrap(a) || a; if (n && n.classList) { n.classList.remove('is-adding'); n.classList.add('is-added') } })
+  ShopifyAPI.getCart(cartUpdateCallback)
+}
+
+const itemErrorCallback = (xhr) => {
+  let data = {}
+  try { data = JSON.parse(xhr.responseText || '{}') } catch (_) {}
+  const adds = addToCart ? (addToCart.length !== undefined && addToCart.tagName === undefined ? [...addToCart] : [addToCart]) : []
+  adds.forEach((a) => { const n = unwrap(a) || a; if (n && n.classList) n.classList.remove('is-adding', 'is-added') })
+  if (data.message && data.status == 422) {
+    const errDiv = document.createElement('div')
+    errDiv.className = 'errors qty-error'
+    errDiv.textContent = data.description || data.message
+    const fc = unwrap(formContainer) || (formContainer && formContainer[0] ? formContainer[0] : null)
+    const anchor = fc && fc.parentNode ? fc : document.body
+    if (fc && fc.after) fc.after(errDiv)
+    else anchor.appendChild(errDiv)
+  }
+}
+
+const cartUpdateCallback = (cart) => {
+  updateCountPrice(cart)
+  buildCart(cart)
+}
+
+const buildCart = (cart) => {
+  const container = unwrap(cartContainer) || cartContainer
+  if (!container) return
+  scheduler.mutate(() => {
+    container.innerHTML = ''
+    if (cart.item_count === 0) {
+      const p = document.createElement('p')
+      p.textContent = (settings.i18n && settings.i18n.empty) || I18N.empty
+      container.appendChild(p)
+      cartCallback(cart)
+      return
+    }
+    const sourceEl = q('#CartTemplate')
+    const source = sourceEl ? sourceEl.innerHTML : ''
+    const Handlebars = window.Handlebars
+    if (!Handlebars || !source) {
+      // fallback: simple list without Handlebars
+      const frag = document.createDocumentFragment()
+      cart.items.forEach((cartItem, index) => {
+        const div = document.createElement('div')
+        div.textContent = `${cartItem.product_title} x ${cartItem.quantity}`
+        void index
+        frag.appendChild(div)
+      })
+      container.appendChild(frag)
+      cartCallback(cart)
+      return
+    }
+    const template = Handlebars.compile(source)
+    const items = cart.items.map((cartItem, index) => {
+      let prodImg = '//cdn.shopify.com/s/assets/admin/no-image-medium-cc9732cb976dd349a0df1d39816fbcc7.gif'
+      if (cartItem.image != null) prodImg = cartItem.image.replace(/(\.[^.]*)$/, '_small$1').replace('http:', '')
+      const fmt = (c) => (window.Shopify && window.Shopify.formatMoney ? window.Shopify.formatMoney(c, settings.moneyFormat) : String(c))
+      return {
+        key: cartItem.key,
+        line: index + 1,
+        url: cartItem.url,
+        img: prodImg,
+        name: cartItem.product_title,
+        variation: cartItem.variant_title,
+        properties: cartItem.properties,
+        itemAdd: cartItem.quantity + 1,
+        itemMinus: cartItem.quantity - 1,
+        itemQty: cartItem.quantity,
+        price: fmt(cartItem.price),
+        vendor: cartItem.vendor,
+        linePrice: fmt(cartItem.line_price),
+        originalLinePrice: fmt(cartItem.original_line_price),
+        discounts: cartItem.discounts,
+        discountsApplied: cartItem.line_price !== cartItem.original_line_price,
+      }
+    })
+    const savingsTpl = (settings.i18n && settings.i18n.savingsHtml) || I18N.savingsHtml
+    const totalCartDiscount = cart.total_discount === 0 ? 0 : savingsTpl.replace('[savings]', window.Shopify && window.Shopify.formatMoney ? window.Shopify.formatMoney(cart.total_discount, settings.moneyFormat) : String(cart.total_discount))
+    const data = {
+      items,
+      note: cart.note,
+      totalPrice: window.Shopify && window.Shopify.formatMoney ? window.Shopify.formatMoney(cart.total_price, settings.moneyFormat) : String(cart.total_price),
+      totalCartDiscount,
+      totalCartDiscountApplied: cart.total_discount !== 0,
+    }
+    // append via DocumentFragment for single reflow (PERFORMANCE_GUIDE Part I)
+    const html = template(data)
+    const tmp = document.createElement('div')
+    tmp.innerHTML = html
+    const frag = document.createDocumentFragment()
+    while (tmp.firstChild) frag.appendChild(tmp.firstChild)
+    container.appendChild(frag)
+    cartCallback(cart)
+  })
+}
+
+const cartCallback = (cart) => {
+  scheduler.mutate(() => {
+    const b = bodyEl || document.body
+    b.classList.remove('drawer--is-loading')
+  })
+  triggerBody('afterCartLoad.ajaxCart', cart)
+  if (window.Shopify && window.Shopify.StorefrontExpressButtons) window.Shopify.StorefrontExpressButtons.initialize()
+}
+
+const adjustCart = () => {
+  const b = bodyEl || document.body
+  b.addEventListener('click', (e) => {
+    const target = e.target.closest && e.target.closest('.ajaxcart__qty-adjust')
+    if (!target) return
+    if (isUpdating) return
+    const line = target.getAttribute('data-line') || target.dataset.line
+    const qtyEl = target.parentElement ? target.parentElement.querySelector('.ajaxcart__qty-num') : null
+    let qty = qtyEl ? parseInt(qtyEl.value.replace(/\D/g, ''), 10) : 0
+    qty = validateQty(qty)
+    if (target.classList.contains('ajaxcart__qty--plus')) qty += 1
+    else { qty -= 1; if (qty <= 0) qty = 0 }
+    if (line) updateQuantity(line, qty)
+    else if (qtyEl) qtyEl.value = String(qty)
+  })
+  b.addEventListener('change', (e) => {
+    const target = e.target.closest && e.target.closest('.ajaxcart__qty-num')
+    if (!target) return
+    if (isUpdating) return
+    const line = target.getAttribute('data-line') || target.dataset.line
+    let qty = parseInt(target.value.replace(/\D/g, ''), 10)
+    qty = validateQty(qty)
+    if (line) updateQuantity(line, qty)
+  })
+  b.addEventListener('submit', (e) => {
+    const form = e.target.closest && e.target.closest('form.ajaxcart')
+    if (!form) return
+    if (isUpdating) e.preventDefault()
+  })
+  b.addEventListener('focusin', (e) => {
+    const target = e.target.closest && e.target.closest('.ajaxcart__qty-adjust')
+    if (!target) return
+    setTimeout(() => { try { target.select() } catch (_) {} }, 50)
+  })
+
+  const updateQuantity = (line, qty) => {
+    isUpdating = true
+    const row = q(`.ajaxcart__row[data-line="${line}"]`)
+    if (row) row.classList.add('is-loading')
+    if (qty === 0 && row && row.parentElement) row.parentElement.classList.add('is-removed')
+    setTimeout(() => ShopifyAPI.changeItem(line, qty, adjustCartCallback), 250)
+  }
+
+  b.addEventListener('change', (e) => {
+    if (e.target.matches && e.target.matches('textarea[name="note"]')) {
+      ShopifyAPI.updateCartNote(e.target.value, () => {})
+    }
+  })
+}
+
+const adjustCartCallback = (cart) => {
+  updateCountPrice(cart)
+  setTimeout(() => {
+    isUpdating = false
+    ShopifyAPI.getCart(buildCart)
+  }, 150)
+}
+
+const validateQty = (qty) => {
+  if (parseFloat(qty) == parseInt(qty, 10) && !isNaN(qty)) return qty
+  return 1
+}
+
+const init = (options = {}) => {
+  settings = Object.assign({}, settings, options)
+  // support Liquid i18n passthrough
+  if (options.i18n) settings.i18n = Object.assign({}, I18N, options.i18n)
+
+  // selectors — mepto fallback, else native
+  const mepto = window.mepto || window.jQuery
+  const sel = (s) => {
+    if (!s) return null
+    if (mepto) return mepto(s)
+    const els = qq(s)
+    return els.length === 1 ? els[0] : els
+  }
+
+  formContainer = sel(settings.formSelector)
+  // cartContainer is single
+  const cc = q(settings.cartContainer)
+  cartContainer = cc || sel(settings.cartContainer)
+  addToCart = formContainer ? (mepto ? (formContainer.find ? formContainer.find(settings.addToCartSelector) : qq(settings.addToCartSelector, unwrap(formContainer) || document)) : qq(settings.addToCartSelector, unwrap(formContainer) || document)) : null
+  if (mepto) {
+    cartCountSelector = settings.cartCountSelector ? mepto(settings.cartCountSelector) : null
+    cartCostSelector = settings.cartCostSelector ? mepto(settings.cartCostSelector) : null
+  } else {
+    cartCountSelector = settings.cartCountSelector ? qq(settings.cartCountSelector) : null
+    cartCostSelector = settings.cartCostSelector ? qq(settings.cartCostSelector) : null
+  }
+  bodyEl = document.body
+
+  isUpdating = false
+
+  if (settings.enableQtySelectors) qtySelectors()
+
+  const adds = addToCart ? (addToCart.length !== undefined && addToCart.tagName === undefined ? [...addToCart] : [addToCart]) : []
+  if (!settings.disableAjaxCart && adds.length) formOverride()
+
+  adjustCart()
+}
+
+const loadCart = () => {
+  const b = bodyEl || document.body
+  b.classList.add('drawer--is-loading')
+  ShopifyAPI.getCart(cartUpdateCallback)
+}
+
+const createQtySelectors = () => {
+  const container = unwrap(cartContainer) || document
+  const inputs = qq('input[type="number"]', container)
+  inputs.forEach((el) => {
+    const currentQty = el.value
+    const itemAdd = String(parseInt(currentQty, 10) + 1)
+    const itemMinus = String(parseInt(currentQty, 10) - 1)
+    const sourceEl = q('#AjaxQty')
+    const Handlebars = window.Handlebars
+    if (!Handlebars || !sourceEl) return
+    const template = Handlebars.compile(sourceEl.innerHTML)
+    const data = { key: el.getAttribute('data-id'), itemQty: currentQty, itemAdd, itemMinus }
+    const tmp = document.createElement('div')
+    tmp.innerHTML = template(data)
+    el.after(tmp.firstElementChild || tmp.firstChild)
+    el.remove()
+  })
+}
+
+const qtySelectors = () => {
+  const numInputs = qq('input[type="number"]')
+  if (!numInputs.length) return
+  numInputs.forEach((el) => {
+    const currentQty = el.value
+    const inputName = el.getAttribute('name')
+    const inputId = el.getAttribute('id')
+    const itemAdd = String(parseInt(currentQty, 10) + 1)
+    const itemMinus = String(parseInt(currentQty, 10) - 1)
+    const sourceEl = q('#JsQty')
+    const Handlebars = window.Handlebars
+    if (!Handlebars || !sourceEl) return
+    const template = Handlebars.compile(sourceEl.innerHTML)
+    const data = { key: el.getAttribute('data-id'), itemQty: currentQty, itemAdd, itemMinus, inputName, inputId }
+    const tmp = document.createElement('div')
+    tmp.innerHTML = template(data)
+    el.after(tmp.firstElementChild || tmp.firstChild)
+    el.remove()
+  })
+  qq('.js-qty__adjust').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const qtyEl = btn.parentElement ? btn.parentElement.querySelector('.js-qty__num') : null
+      if (!qtyEl) return
+      let qty = parseInt(qtyEl.value.replace(/\D/g, ''), 10)
+      qty = validateQty(qty)
+      if (btn.classList.contains('js-qty__adjust--plus')) qty += 1
+      else { qty -= 1; if (qty <= 1) qty = 1 }
+      qtyEl.value = String(qty)
+    })
+  })
+}
+
+const ajaxCartExport = { init, load: loadCart }
+
+if (typeof window !== 'undefined') window.ajaxCart = ajaxCartExport
+
+export { ajaxCartExport as ajaxCart, init, loadCart, ShopifyAPI }
+export default ajaxCartExport

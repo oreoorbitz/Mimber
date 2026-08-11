@@ -25,7 +25,7 @@
 | **3** `productPage` | `product-page.js` (single `mutate`, `classList`/`disabled`/`textContent`, `Shopify.formatMoney` + `Shopify.Image.switchImage`, `options.i18n` defaults for `{{ t \| json }}`) | `dist 22.9K / 11.2K min (6.18K/3.76K gzip)`, 10 modules |
 | **4** `accessibleNav` | `accessible-nav.js` (`querySelectorAll`, `closest`, `classList`, `focus/blur`, body `touchstart` 250ms) | `dist 27.5K / 13.4K min (7.15K/4.35K gzip)`, 11 modules |
 | **5** `Drawers` | `drawers.js` (`Object.assign`/`bind`/`CustomEvent`+`mepto trigger`, `prepareTransition`, `mutate`, `trapFocus` `focusin`) | `dist 36.4K / 18K min (9.07K/5.51K gzip)`, 12 modules |
-| 6 | Queued: `ajax-cart` (563L) | Grows — update `AGENTS.md` when landing |
+| **6** `ajax-cart` | `shopify-api.js` + `ajax-cart.js` (`fetch`+`URLSearchParams`/`FormData` vs `$.ajax`/`Deferred`, `CustomEvent` vs `trigger`, `DocumentFragment` handlebars append, `Object.assign` vs `$.extend`) | `dist 63.8K / 32.1K min (15.06K/9.7K gzip)`, 14 modules — **all 1059L done** |
 
 ## File Map (Mimber vs Client)
 
