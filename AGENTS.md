@@ -62,6 +62,7 @@ Do not guess past the router — open the doc. `AGENTS.md` stays short.
 | **5 — Drawers** | 348-493 | `timber.Drawers` (`$.extend`/`$.proxy`, `trigger`, `trapFocus`, `prepareTransition`) | **Done** (12 modules, `dist 36.4K/18K min`) | `Object.assign` vs `$.extend`, `bind` vs `$.proxy`, `CustomEvent` + `mepto trigger` compat, `mutate` |
 | **6 — ajax-cart** | `ajax-cart.js.liquid` 563 | `$.ajax`/`Deferred` + `Handlebars` cart rendering | **Done** (14 modules, `dist 63.8K/32.1K min` → `67.2K/34.8K` with slice 7) | `fetch` vs `$.ajax`, `FormData`+`URLSearchParams`, `DocumentFragment`, `CustomEvent` |
 | **7 — handlebars + theme liquid** | `handlebars.min.js` 46K + `theme.liquid` + `ajax-cart-template` + `collection-sorting`/`product` | **Done** (14 modules, `dist 67.2K/34.8K min`, **save 46K + 1 req**, 0 `jQuery` in theme) | `native <template>` vs `Handlebars.compile`, `mepto.js` vs `jquery/1.12.4`, `URLSearchParams` vs `jQuery.param`, `DOMContentLoaded` vs `jQuery(function` |
+| **8 — query optimization** | `cache.js`/`product-page.js`/`drawers.js`/`accessible-nav`/`utils` | **Done** (14 mods, `dist 65K/34.7K min`, per **measurethat #16434** `closest 13.8M vs querySelector 16.1M Ops/sec`) | `getElementById` for `#id` (fastest), `getElementsByClassName`/`getElementsByTagName` for `.class`/`a`, QSA only for attribute/`[data-*]`, `closest` only for delegation (kept for `ajaxcart__qty-adjust`, else `parentElement` walk) |
 
 Update this table when you land a slice — LLM points at this file.
 
@@ -153,7 +154,7 @@ node --check src/*.js
 grep -c "jQuery" dist/theme/assets/timber.js  # → 0 (comments only)
 ```
 
-Dist current (slice 7): `timber.esm.js 63.5K` / `timber.pkgd.js 67.2K` / `timber.pkgd.min.js 34.8K` (`10.4K gzip`). All `timber.js.liquid` 496L + `ajax-cart.js.liquid` 563L + `theme.liquid`/`ajax-cart-template` (`handlebars.min.js` 46K **deleted**, save 46K+1 req) = **1059L+theme liquid modernized** — total `67.2K pkgd / 34.8K min` (0 `jQuery` in theme, `mepto.js` only).
+Dist current (slice 8 query-opt): `timber.esm.js 65K` / `timber.pkgd.js 68K` / `timber.pkgd.min.js 34.7K` (`10.4K gzip`). Slices 1-8 complete (query-opt per **measurethat #16434**: `byId`/`byClass`/`byTag` vs QSA, `closest` only for delegation). Save still **46K+1 req** (handlebars deleted).
 
 ---
 

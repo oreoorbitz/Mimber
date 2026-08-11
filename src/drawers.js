@@ -33,10 +33,11 @@ export class Drawer {
     this.position = position
 
     // $nodes: parent = body,html ; page = #PageContainer ; moved = .is-moved-by-drawer
+    // .is-moved-by-drawer is simple class -> getElementsByClassName faster than QSA (per bench)
     this.nodes = {
       parent: [document.body, document.documentElement].filter(Boolean),
       page: document.getElementById('PageContainer'),
-      moved: [...document.querySelectorAll('.is-moved-by-drawer')],
+      moved: [...document.getElementsByClassName('is-moved-by-drawer')],
     }
     this.drawer = document.getElementById(id)
     if (!this.drawer) return false

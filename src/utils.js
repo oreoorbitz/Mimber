@@ -51,8 +51,9 @@ export const productImageSwitch = (timber) => {
 }
 
 export const responsiveVideos = () => {
+  // attribute selectors need QSA — no get* alternative
   const vids = [...document.querySelectorAll('iframe[src*="youtube.com/embed"], iframe[src*="player.vimeo"]')]
-  const resets = [...document.querySelectorAll('iframe#admin_bar_iframe')]
+  const resets = [document.getElementById('admin_bar_iframe')].filter(Boolean) // #id -> byId faster than QSA
   // batch wraps in mutate
   scheduler.mutate(() => {
     vids.forEach((el) => {

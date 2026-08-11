@@ -1,5 +1,6 @@
-// timber.accessibleNav — Slice 4
-// Mepto/native: querySelectorAll, classList, closest, addEventListener; scheduler not needed (no layout thrash).
+// timber.accessibleNav — Slice 4 + query-opt (measurethat #16434: closest vs querySelector)
+// Use getElementById for #id, getElementsByClassName for .class where simple, closest only for delegation
+// closest is 13.8M ops/sec vs querySelector 16.1M ops/sec in Chrome (closest slower), so prefer QSA from known root when we have parent.
 
 const ACTIVE = 'nav-hover'
 const FOCUS = 'nav-focus'
@@ -16,13 +17,21 @@ export const accessibleNav = (timber) => {
   const nav = unwrap(timber.cache?.$navigation)
   if (!nav) return
 
-  const allLinks = [...nav.querySelectorAll('a')]
-  const topLevel = [...nav.querySelectorAll(':scope > li a')].length ? [...nav.querySelectorAll(':scope > li a')] : [...nav.children].flatMap((li) => [...li.querySelectorAll('a')]).filter((a) => a.closest('li') && a.closest('li').parentElement === nav)
-  // fallback: children('li').find('a') — use direct children
-  const topLevelLinks = topLevel.length ? topLevel : [...nav.querySelectorAll('a')].filter((a) => a.closest('.site-nav--has-dropdown') === null || a.closest('li')?.parentElement === nav)
+  // Use nav-scoped QSA, but for simple .class use getElementsByClassName when not needing delegation
+  // :scope > li a is faster than full QSA + closest filter; fallback uses children (no closest) per bench
+  const allLinks = [...nav.getElementsByTagName('a')] // faster than QSA 'a' (tag only)
+  const directLis = [...nav.children].filter((el) => el.tagName === 'LI')
+  const topLevel = directLis.length ? directLis.flatMap((li) => [...li.querySelectorAll('a')]) : [...nav.querySelectorAll(':scope > li a')]
+  const topLevelLinks = topLevel.length ? topLevel : allLinks.filter((a) => {
+    // avoid closest('li') overhead — walk one parent up (li) then check nav contains, cheaper than closest
+    const li = a.parentElement && a.parentElement.tagName === 'LI' ? a.parentElement : a.closest('li')
+    return li && li.parentElement === nav
+  })
 
-  const parents = [...nav.querySelectorAll('.site-nav--has-dropdown')]
-  const subMenuLinks = [...nav.querySelectorAll('.site-nav__dropdown a')]
+  // parents: simple class -> getElementsByClassName is faster than QSA per bench, but need array; use QSA for scoped nav still fine
+  // Keep QSA for direct nav scope, but avoid global document QSA
+  const parents = [...nav.getElementsByClassName('site-nav--has-dropdown')]
+  const subMenuLinks = [...nav.querySelectorAll('.site-nav__dropdown a')] // descendant, needs QSA
 
   const body = unwrap(timber.cache?.$body) || document.body
 
@@ -54,6 +63,9 @@ export const accessibleNav = (timber) => {
     const subMenu = node.nextElementSibling && node.nextElementSibling.tagName === 'UL' ? node.nextElementSibling : null
     const hasSubMenu = !!(subMenu && subMenu.classList.contains('sub-nav'))
     void hasSubMenu
+    // closest is correct for ancestor delegation (need walk up), but per #16434 it's slower than QSA from known root
+    // Here we have node and need ancestor .site-nav__dropdown / .site-nav--has-dropdown — closest is most readable and event-scoped
+    // Keep closest for correctness; alternative parentElement walk would be ~same and less robust for nested UL
     const isSubItem = !!node.closest('.site-nav__dropdown')
     if (!isSubItem) {
       removeFocus(topLevelLinks)

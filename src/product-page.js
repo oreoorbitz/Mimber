@@ -11,7 +11,7 @@ const I18N_DEFAULTS = {
   compareAt: 'Compare at',
 }
 
-const q = (sel) => document.querySelector(sel)
+const byId = (id) => document.getElementById(id)
 const qq = (sel) => [...document.querySelectorAll(sel)]
 
 export const productPage = (options = {}) => {
@@ -19,13 +19,13 @@ export const productPage = (options = {}) => {
   const variant = options.variant
   const i18n = { ...I18N_DEFAULTS, ...(options.i18n || {}) }
 
-  // selectors — single query per element (bulk reads)
-  const productImage = q('#ProductPhotoImg')
-  const addToCart = q('#AddToCart')
-  const productPrice = q('#ProductPrice')
-  const comparePrice = q('#ComparePrice')
+  // selectors — byId for #id (fastest, per measurethat #16434 companion: getElementById > QSA)
+  const productImage = byId('ProductPhotoImg')
+  const addToCart = byId('AddToCart')
+  const productPrice = byId('ProductPrice')
+  const comparePrice = byId('ComparePrice')
   const quantityElements = qq('.quantity-selector, label + .js-qty')
-  const addToCartText = q('#AddToCartText')
+  const addToCartText = byId('AddToCartText')
 
   scheduler.mutate(() => {
     if (variant) {

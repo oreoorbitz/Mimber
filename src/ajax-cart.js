@@ -187,11 +187,13 @@ const cartCallback = (cart) => {
 
 const adjustCart = () => {
   const b = bodyEl || document.body
+  // delegation: closest is correct here (need ancestor walk from e.target) — per #16434 closest is ~13.8M ops/sec vs QSA 16M in Chrome, but QSA not applicable for event target walk
   b.addEventListener('click', (e) => {
     const target = e.target.closest && e.target.closest('.ajaxcart__qty-adjust')
     if (!target) return
     if (isUpdating) return
     const line = target.getAttribute('data-line') || target.dataset.line
+    // qty input is sibling -> parentElement.querySelector is scoped, faster than document QSA
     const qtyEl = target.parentElement ? target.parentElement.querySelector('.ajaxcart__qty-num') : null
     let qty = qtyEl ? parseInt(qtyEl.value.replace(/\D/g, ''), 10) : 0
     qty = validateQty(qty)
@@ -222,7 +224,8 @@ const adjustCart = () => {
 
   const updateQuantity = (line, qty) => {
     isUpdating = true
-    const row = q(`.ajaxcart__row[data-line="${line}"]`)
+    // attribute selector needs QSA, but scoped to document is correct — no id available
+    const row = document.querySelector(`.ajaxcart__row[data-line="${line}"]`)
     if (row) row.classList.add('is-loading')
     if (qty === 0 && row && row.parentElement) row.parentElement.classList.add('is-removed')
     setTimeout(() => ShopifyAPI.changeItem(line, qty, adjustCartCallback), 250)

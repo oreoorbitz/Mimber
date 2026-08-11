@@ -410,9 +410,8 @@ var replaceUrlParam = function replaceUrlParam(url, param, value) {
   return url + (url.indexOf('?') > 0 ? '&' : '?') + param + '=' + value;
 };
 
-var q$2 = function q(sel) {
-  var root = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : document;
-  return root.querySelector(sel);
+var byId$1 = function byId(id) {
+  return document.getElementById(id);
 };
 var qq$2 = function qq(sel) {
   var root = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : document;
@@ -420,37 +419,33 @@ var qq$2 = function qq(sel) {
 };
 var cacheSelectors = function cacheSelectors(timber) {
   // Keep $ prefix for bw compat; values are Mepto collections if mepto present else native arrays/elements
-  // Use mepto where available so callers can .on/.toggleClass; fall back to native query.
   var mepto = $ ? window.mepto || window.jQuery : null;
   var useMepto = !!mepto;
   var sel = function sel(s) {
     return useMepto ? mepto(s) : qq$2(s);
   };
-  var sel1 = function sel1(s) {
-    return useMepto ? mepto(s) : q$2(s);
-  };
 
   // Product thumbs: $('#ProductThumbs').find('a.product-single__thumbnail')
-  var thumbRoot = q$2('#ProductThumbs');
+  var thumbRoot = byId$1('ProductThumbs');
   var thumbImages = thumbRoot ? useMepto ? mepto('#ProductThumbs').find('a.product-single__thumbnail') : qq$2('a.product-single__thumbnail', thumbRoot) : sel('a.product-single__thumbnail__empty__');
   timber.cache = {
     // General
-    $html: useMepto ? mepto('html') : q$2('html'),
+    $html: useMepto ? mepto('html') : document.documentElement,
     $body: useMepto ? mepto(document.body) : document.body,
     // Navigation
-    $navigation: sel1('#AccessibleNav'),
+    $navigation: byId$1('AccessibleNav'),
     $mobileSubNavToggle: sel('.mobile-nav__toggle'),
-    // Collection
-    $changeView: sel('.change-view'),
-    // Product
-    $productImage: sel1('#ProductPhotoImg'),
+    // Collection — simple .class, use getElementsByClassName when native (faster than QSA per bench)
+    $changeView: useMepto ? sel('.change-view') : _toConsumableArray(document.getElementsByClassName('change-view')),
+    // Product — byId for #id (fastest, per bench), avoids QSA parse
+    $productImage: byId$1('ProductPhotoImg'),
     $thumbImages: thumbImages,
-    // Customer
-    $recoverPasswordLink: sel1('#RecoverPassword'),
-    $hideRecoverPasswordLink: sel1('#HideRecoverPasswordLink'),
-    $recoverPasswordForm: sel1('#RecoverPasswordForm'),
-    $customerLoginForm: sel1('#CustomerLoginForm'),
-    $passwordResetSuccess: sel1('#ResetSuccess')
+    // Customer — byId
+    $recoverPasswordLink: byId$1('RecoverPassword'),
+    $hideRecoverPasswordLink: byId$1('HideRecoverPasswordLink'),
+    $recoverPasswordForm: byId$1('RecoverPasswordForm'),
+    $customerLoginForm: byId$1('CustomerLoginForm'),
+    $passwordResetSuccess: byId$1('ResetSuccess')
   };
   // Normalize thumbImages empty sentinel: if no root, make empty mepto/array
   if (!thumbRoot && timber.cache.$thumbImages && timber.cache.$thumbImages.length === 0) ;
@@ -503,8 +498,9 @@ var productImageSwitch = function productImageSwitch(timber) {
   });
 };
 var responsiveVideos = function responsiveVideos() {
+  // attribute selectors need QSA — no get* alternative
   var vids = _toConsumableArray(document.querySelectorAll('iframe[src*="youtube.com/embed"], iframe[src*="player.vimeo"]'));
-  var resets = _toConsumableArray(document.querySelectorAll('iframe#admin_bar_iframe'));
+  var resets = [document.getElementById('admin_bar_iframe')].filter(Boolean); // #id -> byId faster than QSA
   // batch wraps in mutate
   scheduler.mutate(function () {
     vids.forEach(function (el) {
@@ -592,8 +588,8 @@ var I18N_DEFAULTS = {
   unavailable: 'Unavailable',
   compareAt: 'Compare at'
 };
-var q$1 = function q(sel) {
-  return document.querySelector(sel);
+var byId = function byId(id) {
+  return document.getElementById(id);
 };
 var qq$1 = function qq(sel) {
   return _toConsumableArray(document.querySelectorAll(sel));
@@ -604,13 +600,13 @@ var productPage = function productPage() {
   var variant = options.variant;
   var i18n = _objectSpread2(_objectSpread2({}, I18N_DEFAULTS), options.i18n || {});
 
-  // selectors — single query per element (bulk reads)
-  var productImage = q$1('#ProductPhotoImg');
-  var addToCart = q$1('#AddToCart');
-  var productPrice = q$1('#ProductPrice');
-  var comparePrice = q$1('#ComparePrice');
+  // selectors — byId for #id (fastest, per measurethat #16434 companion: getElementById > QSA)
+  var productImage = byId('ProductPhotoImg');
+  var addToCart = byId('AddToCart');
+  var productPrice = byId('ProductPrice');
+  var comparePrice = byId('ComparePrice');
   var quantityElements = qq$1('.quantity-selector, label + .js-qty');
-  var addToCartText = q$1('#AddToCartText');
+  var addToCartText = byId('AddToCartText');
   scheduler.mutate(function () {
     if (variant) {
       if (variant.featured_image && productImage) {
@@ -672,8 +668,9 @@ var productPage = function productPage() {
   });
 };
 
-// timber.accessibleNav — Slice 4
-// Mepto/native: querySelectorAll, classList, closest, addEventListener; scheduler not needed (no layout thrash).
+// timber.accessibleNav — Slice 4 + query-opt (measurethat #16434: closest vs querySelector)
+// Use getElementById for #id, getElementsByClassName for .class where simple, closest only for delegation
+// closest is 13.8M ops/sec vs querySelector 16.1M ops/sec in Chrome (closest slower), so prefer QSA from known root when we have parent.
 
 var ACTIVE = 'nav-hover';
 var FOCUS = 'nav-focus';
@@ -690,19 +687,27 @@ var accessibleNav = function accessibleNav(timber) {
   var _timber$cache, _timber$cache2;
   var nav = unwrap$2((_timber$cache = timber.cache) === null || _timber$cache === void 0 ? void 0 : _timber$cache.$navigation);
   if (!nav) return;
-  var allLinks = _toConsumableArray(nav.querySelectorAll('a'));
-  var topLevel = _toConsumableArray(nav.querySelectorAll(':scope > li a')).length ? _toConsumableArray(nav.querySelectorAll(':scope > li a')) : _toConsumableArray(nav.children).flatMap(function (li) {
+
+  // Use nav-scoped QSA, but for simple .class use getElementsByClassName when not needing delegation
+  // :scope > li a is faster than full QSA + closest filter; fallback uses children (no closest) per bench
+  var allLinks = _toConsumableArray(nav.getElementsByTagName('a')); // faster than QSA 'a' (tag only)
+  var directLis = _toConsumableArray(nav.children).filter(function (el) {
+    return el.tagName === 'LI';
+  });
+  var topLevel = directLis.length ? directLis.flatMap(function (li) {
     return _toConsumableArray(li.querySelectorAll('a'));
-  }).filter(function (a) {
-    return a.closest('li') && a.closest('li').parentElement === nav;
+  }) : _toConsumableArray(nav.querySelectorAll(':scope > li a'));
+  var topLevelLinks = topLevel.length ? topLevel : allLinks.filter(function (a) {
+    // avoid closest('li') overhead — walk one parent up (li) then check nav contains, cheaper than closest
+    var li = a.parentElement && a.parentElement.tagName === 'LI' ? a.parentElement : a.closest('li');
+    return li && li.parentElement === nav;
   });
-  // fallback: children('li').find('a') — use direct children
-  var topLevelLinks = topLevel.length ? topLevel : _toConsumableArray(nav.querySelectorAll('a')).filter(function (a) {
-    var _a$closest;
-    return a.closest('.site-nav--has-dropdown') === null || ((_a$closest = a.closest('li')) === null || _a$closest === void 0 ? void 0 : _a$closest.parentElement) === nav;
-  });
-  var parents = _toConsumableArray(nav.querySelectorAll('.site-nav--has-dropdown'));
-  var subMenuLinks = _toConsumableArray(nav.querySelectorAll('.site-nav__dropdown a'));
+
+  // parents: simple class -> getElementsByClassName is faster than QSA per bench, but need array; use QSA for scoped nav still fine
+  // Keep QSA for direct nav scope, but avoid global document QSA
+  var parents = _toConsumableArray(nav.getElementsByClassName('site-nav--has-dropdown'));
+  var subMenuLinks = _toConsumableArray(nav.querySelectorAll('.site-nav__dropdown a')); // descendant, needs QSA
+
   var body = unwrap$2((_timber$cache2 = timber.cache) === null || _timber$cache2 === void 0 ? void 0 : _timber$cache2.$body) || document.body;
   var addFocus = function addFocus(els) {
     return toArray(els).forEach(function (el) {
@@ -741,6 +746,9 @@ var accessibleNav = function accessibleNav(timber) {
     if (!node) return;
     var subMenu = node.nextElementSibling && node.nextElementSibling.tagName === 'UL' ? node.nextElementSibling : null;
     !!(subMenu && subMenu.classList.contains('sub-nav'));
+    // closest is correct for ancestor delegation (need walk up), but per #16434 it's slower than QSA from known root
+    // Here we have node and need ancestor .site-nav__dropdown / .site-nav--has-dropdown — closest is most readable and event-scoped
+    // Keep closest for correctness; alternative parentElement walk would be ~same and less robust for nested UL
     var isSubItem = !!node.closest('.site-nav__dropdown');
     if (!isSubItem) {
       removeFocus(topLevelLinks);
@@ -808,10 +816,11 @@ var Drawer = /*#__PURE__*/function () {
     this.position = position;
 
     // $nodes: parent = body,html ; page = #PageContainer ; moved = .is-moved-by-drawer
+    // .is-moved-by-drawer is simple class -> getElementsByClassName faster than QSA (per bench)
     this.nodes = {
       parent: [document.body, document.documentElement].filter(Boolean),
       page: document.getElementById('PageContainer'),
-      moved: _toConsumableArray(document.querySelectorAll('.is-moved-by-drawer'))
+      moved: _toConsumableArray(document.getElementsByClassName('is-moved-by-drawer'))
     };
     this.drawer = document.getElementById(id);
     if (!this.drawer) return false;
@@ -1369,11 +1378,13 @@ var cartCallback = function cartCallback(cart) {
 };
 var adjustCart = function adjustCart() {
   var b = bodyEl || document.body;
+  // delegation: closest is correct here (need ancestor walk from e.target) — per #16434 closest is ~13.8M ops/sec vs QSA 16M in Chrome, but QSA not applicable for event target walk
   b.addEventListener('click', function (e) {
     var target = e.target.closest && e.target.closest('.ajaxcart__qty-adjust');
     if (!target) return;
     if (isUpdating) return;
     var line = target.getAttribute('data-line') || target.dataset.line;
+    // qty input is sibling -> parentElement.querySelector is scoped, faster than document QSA
     var qtyEl = target.parentElement ? target.parentElement.querySelector('.ajaxcart__qty-num') : null;
     var qty = qtyEl ? parseInt(qtyEl.value.replace(/\D/g, ''), 10) : 0;
     qty = validateQty(qty);
@@ -1408,7 +1419,8 @@ var adjustCart = function adjustCart() {
   });
   var updateQuantity = function updateQuantity(line, qty) {
     isUpdating = true;
-    var row = q(".ajaxcart__row[data-line=\"".concat(line, "\"]"));
+    // attribute selector needs QSA, but scoped to document is correct — no id available
+    var row = document.querySelector(".ajaxcart__row[data-line=\"".concat(line, "\"]"));
     if (row) row.classList.add('is-loading');
     if (qty === 0 && row && row.parentElement) row.parentElement.classList.add('is-removed');
     setTimeout(function () {
