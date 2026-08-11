@@ -38,7 +38,7 @@
         <h1 class="text-center">{{ 'general.search.title' | t }}</h1>
       {% endif %}
 
-      {% include 'search-bar' %}
+      {% render 'search-bar' %}
 
       {% if search.performed %}
 
@@ -184,6 +184,6 @@
 {% endpaginate %}
 
 {% else %}
-  {% include 'respond' %}
+  {% render 'respond' %}
   {% layout none %}
 {% endunless %}

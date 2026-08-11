@@ -9,7 +9,7 @@
 
 {% endcomment %}
 
-{% include 'breadcrumb' %}
+{% render 'breadcrumb', collection: collection, product: product, blog: blog, article: article, page: page, current_tags: current_tags, page_title: page_title %}
 
 {% comment %}
   Loop through each collection, except 'frontpage'
@@ -30,7 +30,7 @@
     <div class="grid-uniform">
       {% for product in collection.products limit:5 %}
         {% assign grid_item_width = 'large--one-fifth medium--one-half' %}
-        {% include 'product-grid-item' %}
+        {% render 'product-grid-item', product: product, collection: collection, grid_item_width: grid_item_width %}
       {% endfor %}
     </div>
 

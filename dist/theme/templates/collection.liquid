@@ -8,7 +8,7 @@
 
 {% paginate collection.products by 12 %}
 
-{% include 'breadcrumb' %}
+{% render 'breadcrumb', collection: collection, product: product, blog: blog, article: article, page: page, current_tags: current_tags, page_title: page_title %}
 
 {% comment %}
   Use .grid--rev so that the collection tags appear below the products on mobile
@@ -29,14 +29,14 @@
       <hr>
       <div class="section-header">
         <div class="section-header__right">
-          {% include 'collection-sorting' %}
+          {% render 'collection-sorting' %}
         </div>
       </div>
     {% else %}
       <header class="section-header">
         <h1 class="section-header__title section-header__left">{{ collection.title }}</h1>
         <div class="section-header__right">
-          {% include 'collection-sorting' %}
+          {% render 'collection-sorting' %}
         </div>
       </header>
     {% endif %}
@@ -53,7 +53,7 @@
       {% endcomment %}
       {% for product in collection.products %}
 
-        {% include 'product-grid-item' %}
+        {% render 'product-grid-item', product: product, collection: collection, grid_item_width: grid_item_width %}
 
       {% else %}
 
@@ -66,7 +66,7 @@
             {{ 'theme-onboarding.css' | global_asset_url | stylesheet_tag }}
             {% assign emptyState = true %}
           {% endunless %}
-          {% include 'onboarding-empty-collection' %}
+          {% render 'onboarding-empty-collection' %}
 
         {% else %}
 
@@ -93,7 +93,7 @@
   </div>
 
   <div class="grid__item large--one-quarter">
-    {% include 'collection-sidebar' %}
+    {% render 'collection-sidebar', collection: collection, current_tags: current_tags %}
   </div>
 </div>
 

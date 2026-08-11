@@ -20,7 +20,7 @@
   {% assign number_of_comments = article.comments_count | plus: 1 %}
 {% endif %}
 
-{% include 'breadcrumb' %}
+{% render 'breadcrumb', collection: collection, product: product, blog: blog, article: article, page: page, current_tags: current_tags, page_title: page_title %}
 
 <div class="grid">
 
@@ -43,7 +43,7 @@
       Show off meta information like comments and tags.
     {% endcomment %}
     <ul class="inline-list">
-      {% include 'tags-article' %}
+      {% render 'tags-article', article: article, blog: blog %}
     </ul>
 
     {% comment %}
@@ -98,7 +98,7 @@
               {% endcomment %}
               {% if comment and comment.created_at %}
                 <li id="{{ comment.id }}" class="comment first{% if article.comments_count == 0 %} last{% endif %}">
-                  {% include 'comment' %}
+                  {% render 'comment', comment: comment %}
                 </li>
               {% endif %}
 
@@ -107,7 +107,7 @@
               {% endcomment %}
               {% for comment in article.comments %}
                 <li id="{{ comment.id }}" class="comment{% unless number_of_comments > article.comments_count %}{% if forloop.first %} first{% endif %}{% endunless %}{% if forloop.last %} last {% endif %}">
-                  {% include 'comment' %}
+                  {% render 'comment', comment: comment %}
                 </li>
 
                 {% unless forloop.last %}
@@ -165,6 +165,6 @@
   </article>
 
   <aside class="grid__item large--one-quarter" role="complementary">
-    {% include 'blog-sidebar' %}
+    {% render 'blog-sidebar', blog: blog, current_tags: current_tags %}
   </aside>
 </div>

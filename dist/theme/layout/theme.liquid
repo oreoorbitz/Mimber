@@ -22,7 +22,7 @@
   {% endif %}
 
   <!-- Helpers ================================================== -->
-  {% include 'social-meta-tags' %}
+  {% render 'social-meta-tags' %}
   <link rel="canonical" href="{{ canonical_url }}">
   <meta name="viewport" content="width=device-width,initial-scale=1,shrink-to-fit=no">
   <meta name="theme-color" content="{{ settings.color_primary }}">
@@ -35,7 +35,7 @@
 
   <!-- Header hook for plugins ================================================== -->
   {{ content_for_header }}
-  {% include 'oldIE-js' %}
+  {% render 'oldIE-js' %}
 
   <script>
     window.Shopify = window.Shopify || {};
@@ -73,7 +73,7 @@
     <!-- begin mobile-nav -->
     <ul class="mobile-nav">
       <li class="mobile-nav__item mobile-nav__search">
-        {% include 'search-bar' %}
+        {% render 'search-bar' %}
       </li>
       {% for link in linklists.main-menu.links %}
         {% comment %}
@@ -223,7 +223,7 @@
             {% endif %}
 
             <div class="site-header__search">
-              {% include 'search-bar' %}
+              {% render 'search-bar' %}
             </div>
           </div>
         </div>
@@ -432,7 +432,7 @@
       - http://shopify.com/timber#ajax-cart
   {% endcomment %}
   {% if settings.ajax_cart_method == "drawer" %}
-    {% include 'ajax-cart-template' %}
+    {% render 'ajax-cart-template' %}
     <script type="module" src="{{ 'cart.js' | asset_url }}"></script>
     <script>
       document.addEventListener('DOMContentLoaded', function() {

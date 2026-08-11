@@ -8,7 +8,7 @@
 
 {% paginate blog.articles by 5 %}
 
-{% include 'breadcrumb' %}
+{% render 'breadcrumb', collection: collection, product: product, blog: blog, article: article, page: page, current_tags: current_tags, page_title: page_title %}
 
 {% comment %}
   This template is also used for listing out articles of a specific tag.
@@ -70,7 +70,7 @@
           </li>
           {% endif %}
 
-          {% include 'tags-article' %}
+          {% render 'tags-article', article: article, blog: blog %}
         </ul>
 
         <p><a href="{{ article.url }}">{{ 'blogs.article.read_more' | t }} &rarr;</a></p>
@@ -91,7 +91,7 @@
   </div>
 
   <div class="grid__item large--one-quarter">
-    {% include 'blog-sidebar' %}
+    {% render 'blog-sidebar', blog: blog, current_tags: current_tags %}
   </div>
 
 </div>
