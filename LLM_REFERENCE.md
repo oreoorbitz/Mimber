@@ -2,16 +2,27 @@
 
 > **Mimber** is a fork of `Shopify/Timber@2.2.2` (2014, MIT), the 10-year-ago ancestor of most Dawn-era Shopify themes. It is **not** a drop-in replacement. Client themes built on Timber have 5–10 years of divergent edits (new sections, apps, `product.js`/`theme.js` forks). Use Mimber as a **read-only reference DB** for an LLM modernizing a *specific* client repo — diff against Mimber to find what the client changed, then apply Mepto/modernization patches to the *client* files, not by copying Mimber.
 
+> **Orchestrator is `AGENTS.md` — start there.** `AGENTS.md` is the paste-and-point entry (router + slice status + full file map). This file is the deep RAG detail for diff/mapping/verification. If you were told to paste Mimber into a Theme, open `AGENTS.md` first.
+
 ## How to Use (for an LLM agent)
 
-1. **Diff, don't copy.** For each client theme file, `diff -u <mimber>/assets/timber.js.liquid <client>/assets/timber.js` (or `ajax-cart.js`). The diff is the client's business logic — preserve it. Only replace `jQuery` surface and polyfill scaffolding using the mappings below.
-2. **Never vendor Mepto silently.** All Mepto integrations must be explicit: `{{ 'mepto.js' | asset_url | script_tag }}` as first script after `shopify_common.js`, or `import $ from 'mepto'` in ESM. See `004-mimber-timber-audit.md` in `orion/plans/`.
-3. **Polyfills already removed from Mimber.** `fastclick.min.js`, `modernizr.min.js`, `respond.min.js` + `respond-proxy.html` were deleted (evergreen, saves ~15K+2 requests). Do **not** re-add them in client themes — remove the `{{ 'fastclick…' | asset_url }}` etc. tags from `layout/theme.liquid:38,395` and replace with `touch-action: manipulation` CSS if needed.
-4. **Two Mepto targets only.** `timber.js.liquid` (496 lines, `prepareTransition` + `Shopify.formatMoney`) and `ajax-cart.js.liquid` (563 lines, `$.ajax`/`Deferred` + `Handlebars` tmpl). `handlebars.min.js` (46K) is **kept** here for reference; client themes may keep it or replace `template.tmpl` with `<template>` clone — check `grep -r "tmpl"` in client.
-5. **Build parity with `orion` libraries.** When you modernize `timber`/`ajax-cart` for a client, use the same stack as `flickity-mepto`/`currencies`/`recently-viewed`:
+1. **Start at `AGENTS.md`.** Paste Mimber folder into client repo (e.g. `mimber-reference/`), then LLM reads `mimber-reference/AGENTS.md`. That file routes to this one for detail.
+2. **Diff, don't copy.** For each client theme file, `diff -u <mimber>/assets/timber.js.liquid <client>/assets/timber.js` (or `ajax-cart.js`). Better: diff `assets/timber.human.js` (prettified 496L backup, readable) — same logic. The diff is the client's business logic — preserve it. Only replace `jQuery` surface and polyfill scaffolding using the mappings below.
+3. **Never vendor Mepto silently.** All Mepto integrations must be explicit: `{{ 'mepto.js' | asset_url | script_tag }}` as first script after `shopify_common.js`, or `import $ from 'mepto'` in ESM. See `AGENTS.md` Mepto mapping and `004-mimber-timber-audit.md` in `orion/plans/` if available.
+4. **Polyfills already removed from Mimber.** `fastclick.min.js`, `modernizr.min.js`, `respond.min.js` + `respond-proxy.html` were deleted (`cf8216d`, evergreen, saves ~15K+2 requests). Do **not** re-add them in client themes — remove the `{{ 'fastclick…' | asset_url }}` etc. tags from `layout/theme.liquid:37,395` and replace with `touch-action: manipulation` CSS if needed.
+5. **Two Mepto targets only (sliced).** `timber.js.liquid` 496L and `ajax-cart.js.liquid` 563L. `handlebars.min.js` (46K) is **kept** here for reference; client themes may keep it or replace `template.tmpl` with `<template>` clone — check `grep -r "tmpl"` in client.
+6. **Build parity with `orion` libraries.** When you modernize `timber`/`ajax-cart` for a client, use the same stack as `flickity-mepto`/`currencies`/`recently-viewed`:
    - `package.json` `type:module` `browserslist ["last 3 versions"]`, `vite` `esnext + @rollup/plugin-babel` (`bugfixes:true`), `Babel` `preset-env` `modules:false`.
-   - `src/timber.js` + `src/ajax-cart.js` ESM, `src/scheduler.js` FastDOM `measure`/`mutate` (rAF), `DocumentFragment` for cart row inserts.
-   - Output `dist/timber.mepto.pkgd.min.js` → `assets/timber.js` (keep `.liquid` header if present) and `dist/ajax-cart.mepto.pkgd.min.js` → `assets/ajax-cart.js` via `{{ 'timber.js' | asset_url }}`.
+   - `src/` ESM per slice (see `AGENTS.md` Slice status), `src/scheduler.js` FastDOM `measure`/`mutate` (rAF), `DocumentFragment` for cart row inserts (ajax-cart).
+   - Output `dist/timber.pkgd.min.js` → `assets/timber.js` (keep `.liquid` header if present) and `dist/ajax-cart.mepto.pkgd.min.js` → `assets/ajax-cart.js` via `{{ 'timber.js' | asset_url }}`.
+
+## Slice exports (what LLM copies as pattern)
+
+| Slice | Mimber `src/` | Built `dist` (slice 2) |
+|---|---|---|
+| **1** `prepareTransition` + `formatMoney` | `prepare-transition.js` (`classList`+`transitionend {once:true}`+`scheduler.mutate void offsetWidth`), `money-format.js` (hoisted regex), `url.js` (`replaceUrlParam` cached `RegExp`), `scheduler.js`, `mepto.js` | `dist/timber.pkgd.min.js 3.5K` |
+| **2** `cache + small utils` | `cache.js` (bulk `querySelectorAll`, `mepto` fallback, shape-stable `timber.cache`), `utils.js` (`mobileNavToggle`/`productImageSwitch`/`switchImage`/`responsiveVideos` wrap batch/`collectionViews`/`loginForms`/`resetPasswordSuccess`/`getHash`) + `src/index.js` (`DOMContentLoaded` auto-init, no `FastClick`) | `dist 17.7K / 8.5K min (5K/2.96K gzip)`, 9 modules (`b7353a4`→`aa4342c`) |
+| 3-6 | Queued: `productPage` (203-259) → `accessibleNav` (105-182) → `Drawers` (348-493) → `ajax-cart` (563L) | Grows — update `AGENTS.md` when landing |
 
 ## File Map (Mimber vs Client)
 
