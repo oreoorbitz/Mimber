@@ -16,13 +16,13 @@ Mimber is a **reference DB**, not an installable theme. Fork of `Shopify/Timber@
 
 ## Preview harness (ThemeKit + Playwright) — LLM can run without `shopify theme` 2.0
 
-Timber is **Shopify 1.0** (`assets/layout/snippets/templates/config`). `shopify theme` CLI is 2.0 and rejects 1.0. Use **legacy ThemeKit** (`@shopify/themekit`, Go binary) for now. Order: JS → CSS → Liquid (this repo does JS first, CSS/Liquid last).
+Timber is **Shopify 1.0** (`assets/layout/snippets/templates/config`). `shopify theme` CLI is 2.0 and rejects 1.0. Use **bundled ThemeKit fork** (`oreoorbitz/themekit`, Go, vendored at `vendor/themekit` + bundled with Mepto `meptos` for customization) for now. Order: JS → CSS → Liquid (this repo does JS first, CSS/Liquid last).
 
 | Step | Command | What |
 |---|---|---|
 | 1 | `cp config.yml.example config.yml` | Fill `store`, `password` (private app), `theme_id` or `THEMEKIT_STORE/THEMEKIT_PASSWORD/THEMEKIT_THEME_ID` env |
 | 2 | `npm run build` | Vite `esnext+Babel last3` → `dist/timber.*.js` + `npm run build:theme` → `dist/theme` (Shopify 1.0 structure + modern `assets/timber.js`) |
-| 3 | `npx shopify-themekit deploy` or `npm run theme:deploy` | Upload `dist/theme` to store (needs `bin/theme` binary via `postinstall` `node lib/install.js`) |
+| 3 | `node scripts/themekit.mjs deploy` or `npm run theme:deploy` | Upload `dist/theme` via **bundled fork** `vendor/themekit/bin/theme` (built via `npm run themekit:build` with Go, else falls back to `@shopify/themekit` S3 binary or `theme` on PATH) |
 | 4 | `npm run theme:preview:url` | Prints `https://{store}/?_ab=0&_fd=0&_sc=1&preview_theme_id={theme_id}` (x.y + z from `config.yml`) |
 | 5 | `npx playwright test --grep preview` or `npm run test:preview` | Playwright opens preview URL, asserts `body` visible, screenshots `playwright-report/preview.png` |
 | Local only (no store) | `npx playwright test --grep local` | Asserts `dist/theme` structure + bundle (no network) — 2 tests, ~0.6s |
@@ -90,9 +90,11 @@ Update this table when you land a slice — LLM points at this file.
 | `src/mepto.js` | `window.mepto \|\| window.jQuery` getter (`$`) | Shared |
 | `src/index.js` | Assembles `window.timber` legacy names, `DOMContentLoaded` auto-init | Entry |
 | `dist/timber.esm.js` / `dist/timber.pkgd.js` / `dist/timber.pkgd.min.js` | Built artifacts — Vite `esnext` + Babel `last 3` | Copy `pkgd.min.js` → client `assets/timber.js` |
-| `dist/theme/` | **Shopify 1.0 theme for ThemeKit** — `assets/timber.js` (modern), `layout/theme.liquid`, `config/`, `snippets/`, `templates/` | `npx shopify-themekit deploy` uploads `dist/theme` (`directory: dist/theme` in `config.yml`) |
+| `dist/theme/` | **Shopify 1.0 theme for ThemeKit** — `assets/timber.js` (modern), `layout/theme.liquid`, `config/`, `snippets/`, `templates/` | `node scripts/themekit.mjs deploy` uploads `dist/theme` (`directory: dist/theme` in `config.yml`) |
+| `vendor/themekit/` | **Bundled ThemeKit fork** `oreoorbitz/themekit` (Go) — customized with Mepto, 1.0 workflow | `go build` → `vendor/themekit/bin/theme`; `scripts/themekit.mjs` prefers this, then `@shopify/themekit` |
 | `config.yml.example` | ThemeKit legacy config (store + `theme_id` + `preview_theme_id` in preview URL) | `cp config.yml.example config.yml`, fill `x.y` + `z` |
 | `scripts/build-theme.mjs` | Copies `assets/layout/config/locales/snippets/templates` → `dist/theme` + overlays `dist/timber.pkgd.min.js` | `npm run build:theme` (also `npm run build`) |
+| `scripts/themekit.mjs` | Fork wrapper — resolves `vendor/themekit/bin/theme` → `@shopify/themekit` → `theme` PATH | `node scripts/themekit.mjs deploy/watch --help` |
 | `playwright.config.mjs` + `tests/preview.spec.js` | Playwright harness — `_ab=0&_fd=0&_sc=1&preview_theme_id=z` | `npm run test:preview` (`--grep preview` for remote, `--grep local` for offline) |
 | `package.json` (`type:module`, `browserslist last 3`), `vite.config.mjs`+`vite.min.config.mjs`, `babel.config.json` | Build parity with `flickity-mepto`/`currencies` | Reuse in client build |
 | `README.md` | Upstream Timber README (deprecated notice) — not orchestrator | Ignore |
@@ -132,13 +134,14 @@ Never vendor Mepto silently — `{{ 'mepto.js' \| asset_url \| script_tag }}` fi
 
 ```bash
 nvm use                          # 22 LTS (or Node >=18)
-npm install                      # also fetches ThemeKit Go binary into @shopify/themekit/bin/theme
+npm install                      # vendor/themekit fork already cloned; @shopify/themekit fallback via postinstall
 npm run build                    # clean + vite + vite.min + banner + build:theme → dist/* + dist/theme (needs Node 22)
+# optional: build fork binary (needs Go): npm run themekit:build  # → vendor/themekit/bin/theme
 npx playwright install --with-deps chromium  # first time only
 npx playwright test --grep local # offline: asserts dist/theme structure
 # ThemeKit preview (needs store):
 cp config.yml.example config.yml # fill store = x.y (your-store.myshopify.com), theme_id = z, password
-npx shopify-themekit deploy      # or npm run theme:deploy
+node scripts/themekit.mjs deploy # or npm run theme:deploy (uses oreoorbitz/themekit fork → @shopify/themekit fallback)
 npm run theme:preview:url        # prints https://x.y/?_ab=0&_fd=0&_sc=1&preview_theme_id=z
 npx playwright test --grep preview  # opens preview URL (x.y + z)
 node --check src/*.js
@@ -157,4 +160,4 @@ Dist current (slice 6): `timber.esm.js 60.1K` / `timber.pkgd.js 63.8K` / `timber
 
 ## Quick links
 
-Upstream Timber `2.2.2` https://github.com/Shopify/Timber — Mepto https://github.com/oreoorbitz/Mepto — Handlebars `1.3.0` 46K — Shopify `shopify_common.js` (keep)
+Upstream Timber `2.2.2` https://github.com/Shopify/Timber — Mepto https://github.com/oreoorbitz/Mepto + bundled ThemeKit fork https://github.com/oreoorbitz/themekit (Go, `vendor/themekit`, 1.0) — Handlebars `1.3.0` 46K — Shopify `shopify_common.js` (keep)
