@@ -6,6 +6,7 @@ import { replaceUrlParam } from './url.js'
 import { cacheSelectors } from './cache.js'
 import { getHash, switchImage, mobileNavToggle, productImageSwitch, responsiveVideos, collectionViews, loginForms, resetPasswordSuccess } from './utils.js'
 import { productPage } from './product-page.js'
+import { accessibleNav } from './accessible-nav.js'
 
 if (typeof window !== 'undefined') {
   window.Shopify = window.Shopify || {}
@@ -23,11 +24,12 @@ if (typeof window !== 'undefined') {
   window.timber.loginForms = () => loginForms(window.timber)
   window.timber.resetPasswordSuccess = () => resetPasswordSuccess(window.timber)
   window.timber.productPage = productPage
+  window.timber.accessibleNav = () => accessibleNav(window.timber)
   const _origInit = window.timber.init
   window.timber.init = () => {
-    // FastClick removed (evergreen); keep rest, defer to present slices
+    // FastClick removed (evergreen); keep rest
     cacheSelectors(window.timber)
-    if (typeof window.timber.accessibleNav === 'function') try { window.timber.accessibleNav() } catch (_) {}
+    try { accessibleNav(window.timber) } catch (_) {}
     if (typeof window.timber.drawersInit === 'function') try { window.timber.drawersInit() } catch (_) {}
     mobileNavToggle(window.timber)
     productImageSwitch(window.timber)
@@ -40,6 +42,6 @@ if (typeof window !== 'undefined') {
   else queueMicrotask(() => window.timber.init())
 }
 
-export { prepareTransition, replaceUrlParam, cacheSelectors, getHash, switchImage, mobileNavToggle, productImageSwitch, responsiveVideos, collectionViews, loginForms, resetPasswordSuccess, productPage }
+export { prepareTransition, replaceUrlParam, cacheSelectors, getHash, switchImage, mobileNavToggle, productImageSwitch, responsiveVideos, collectionViews, loginForms, resetPasswordSuccess, productPage, accessibleNav }
 // eslint-disable-next-line no-undef
 export const ShopifyFormatMoney = typeof Shopify !== 'undefined' ? Shopify.formatMoney : undefined

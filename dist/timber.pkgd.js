@@ -495,6 +495,113 @@ var TimberMepto = (function (exports) {
     });
   };
 
+  // timber.accessibleNav — Slice 4
+  // Mepto/native: querySelectorAll, classList, closest, addEventListener; scheduler not needed (no layout thrash).
+
+  var ACTIVE = 'nav-hover';
+  var FOCUS = 'nav-focus';
+  var unwrap = function unwrap(el) {
+    return el && el[0] ? el[0] : el;
+  };
+  var toArray = function toArray(els) {
+    if (!els) return [];
+    if (els.nodeType === 1) return [els];
+    if (typeof els.length === 'number' && els.tagName === undefined) return _toConsumableArray(els).filter(Boolean).map(unwrap).filter(Boolean);
+    return [unwrap(els)].filter(Boolean);
+  };
+  var accessibleNav = function accessibleNav(timber) {
+    var _timber$cache, _timber$cache2;
+    var nav = unwrap((_timber$cache = timber.cache) === null || _timber$cache === void 0 ? void 0 : _timber$cache.$navigation);
+    if (!nav) return;
+    var allLinks = _toConsumableArray(nav.querySelectorAll('a'));
+    var topLevel = _toConsumableArray(nav.querySelectorAll(':scope > li a')).length ? _toConsumableArray(nav.querySelectorAll(':scope > li a')) : _toConsumableArray(nav.children).flatMap(function (li) {
+      return _toConsumableArray(li.querySelectorAll('a'));
+    }).filter(function (a) {
+      return a.closest('li') && a.closest('li').parentElement === nav;
+    });
+    // fallback: children('li').find('a') — use direct children
+    var topLevelLinks = topLevel.length ? topLevel : _toConsumableArray(nav.querySelectorAll('a')).filter(function (a) {
+      var _a$closest;
+      return a.closest('.site-nav--has-dropdown') === null || ((_a$closest = a.closest('li')) === null || _a$closest === void 0 ? void 0 : _a$closest.parentElement) === nav;
+    });
+    var parents = _toConsumableArray(nav.querySelectorAll('.site-nav--has-dropdown'));
+    var subMenuLinks = _toConsumableArray(nav.querySelectorAll('.site-nav__dropdown a'));
+    var body = unwrap((_timber$cache2 = timber.cache) === null || _timber$cache2 === void 0 ? void 0 : _timber$cache2.$body) || document.body;
+    var addFocus = function addFocus(els) {
+      return toArray(els).forEach(function (el) {
+        return el.classList.add(FOCUS);
+      });
+    };
+    var removeFocus = function removeFocus(els) {
+      return toArray(els).forEach(function (el) {
+        return el.classList.remove(FOCUS);
+      });
+    };
+    var showDropdown = function showDropdown(el) {
+      var node = unwrap(el);
+      if (!node) return;
+      node.classList.add(ACTIVE);
+      setTimeout(function () {
+        var onTouch = function onTouch() {
+          return hideDropdown(node);
+        };
+        // store handler for removal
+        body._mimberHideHandler = onTouch;
+        body.addEventListener('touchstart', onTouch);
+      }, 250);
+    };
+    var hideDropdown = function hideDropdown(el) {
+      var node = unwrap(el);
+      if (!node) return;
+      node.classList.remove(ACTIVE);
+      if (body._mimberHideHandler) {
+        body.removeEventListener('touchstart', body._mimberHideHandler);
+        body._mimberHideHandler = null;
+      }
+    };
+    var handleFocus = function handleFocus(el) {
+      var node = unwrap(el);
+      if (!node) return;
+      var subMenu = node.nextElementSibling && node.nextElementSibling.tagName === 'UL' ? node.nextElementSibling : null;
+      !!(subMenu && subMenu.classList.contains('sub-nav'));
+      var isSubItem = !!node.closest('.site-nav__dropdown');
+      if (!isSubItem) {
+        removeFocus(topLevelLinks);
+        addFocus(node);
+      } else {
+        var _node$closest;
+        var newFocus = (_node$closest = node.closest('.site-nav--has-dropdown')) === null || _node$closest === void 0 ? void 0 : _node$closest.querySelector('a');
+        if (newFocus) addFocus(newFocus);
+      }
+    };
+    parents.forEach(function (el) {
+      var enter = function enter(evt) {
+        if (!el.classList.contains(ACTIVE)) evt.preventDefault();
+        showDropdown(el);
+      };
+      el.addEventListener('mouseenter', enter);
+      el.addEventListener('touchstart', enter, {
+        passive: false
+      });
+      el.addEventListener('mouseleave', function () {
+        return hideDropdown(el);
+      });
+    });
+    subMenuLinks.forEach(function (el) {
+      el.addEventListener('touchstart', function (evt) {
+        return evt.stopImmediatePropagation();
+      });
+    });
+    allLinks.forEach(function (el) {
+      el.addEventListener('focus', function () {
+        return handleFocus(el);
+      });
+      el.addEventListener('blur', function () {
+        return removeFocus(topLevelLinks);
+      });
+    });
+  };
+
   // timber — slice 2: cache + small utils (see utils.js)
   // Slice 1: prepareTransition + formatMoney
   if (typeof window !== 'undefined') {
@@ -525,12 +632,15 @@ var TimberMepto = (function (exports) {
       return resetPasswordSuccess(window.timber);
     };
     window.timber.productPage = productPage;
+    window.timber.accessibleNav = function () {
+      return accessibleNav(window.timber);
+    };
     window.timber.init;
     window.timber.init = function () {
-      // FastClick removed (evergreen); keep rest, defer to present slices
+      // FastClick removed (evergreen); keep rest
       cacheSelectors(window.timber);
-      if (typeof window.timber.accessibleNav === 'function') try {
-        window.timber.accessibleNav();
+      try {
+        accessibleNav(window.timber);
       } catch (_) {}
       if (typeof window.timber.drawersInit === 'function') try {
         window.timber.drawersInit();
@@ -552,6 +662,7 @@ var TimberMepto = (function (exports) {
   var ShopifyFormatMoney = typeof Shopify !== 'undefined' ? Shopify.formatMoney : undefined;
 
   exports.ShopifyFormatMoney = ShopifyFormatMoney;
+  exports.accessibleNav = accessibleNav;
   exports.cacheSelectors = cacheSelectors;
   exports.collectionViews = collectionViews;
   exports.getHash = getHash;

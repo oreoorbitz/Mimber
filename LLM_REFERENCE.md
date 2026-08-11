@@ -23,7 +23,8 @@
 | **1** `prepareTransition` + `formatMoney` | `prepare-transition.js` (`classList`+`transitionend {once:true}`+`scheduler.mutate void offsetWidth`), `money-format.js` (hoisted regex), `url.js` (`replaceUrlParam` cached `RegExp`), `scheduler.js`, `mepto.js` | `dist/timber.pkgd.min.js 3.5K` |
 | **2** `cache + small utils` | `cache.js` (bulk `querySelectorAll`, `mepto` fallback, shape-stable `timber.cache`), `utils.js` (`mobileNavToggle`/`productImageSwitch`/`switchImage`/`responsiveVideos` wrap batch/`collectionViews`/`loginForms`/`resetPasswordSuccess`/`getHash`) + `src/index.js` (`DOMContentLoaded` auto-init, no `FastClick`) | `dist 17.7K / 8.5K min (5K/2.96K gzip)`, 9 modules (`b7353a4`→`aa4342c`) |
 | **3** `productPage` | `product-page.js` (single `mutate`, `classList`/`disabled`/`textContent`, `Shopify.formatMoney` + `Shopify.Image.switchImage`, `options.i18n` defaults for `{{ t \| json }}`) | `dist 22.9K / 11.2K min (6.18K/3.76K gzip)`, 10 modules |
-| 4-6 | Queued: `accessibleNav` (105-182) → `Drawers` (348-493) → `ajax-cart` (563L) | Grows — update `AGENTS.md` when landing |
+| **4** `accessibleNav` | `accessible-nav.js` (`querySelectorAll`, `closest`, `classList`, `focus/blur`, body `touchstart` 250ms) | `dist 27.5K / 13.4K min (7.15K/4.35K gzip)`, 11 modules |
+| 5-6 | Queued: `Drawers` (348-493) → `ajax-cart` (563L) | Grows — update `AGENTS.md` when landing |
 
 ## File Map (Mimber vs Client)
 
