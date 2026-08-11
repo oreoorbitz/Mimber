@@ -1,6 +1,5 @@
-// timber.accessibleNav — Slice 4 + query-opt (measurethat #16434: closest vs querySelector)
-// Use getElementById for #id, getElementsByClassName for .class where simple, closest only for delegation
-// closest is 13.8M ops/sec vs querySelector 16.1M ops/sec in Chrome (closest slower), so prefer QSA from known root when we have parent.
+// timber.accessibleNav — Slice 4 + query-opt (dom-bench Chrome 150: closest 4.1× > manual loop, gEBCN 57× > qSA)
+// Use getElementById for #id, getElementsByClassName for .class, closest for delegation (C++ walk, no per-level JS→C++ crossing)
 
 const ACTIVE = 'nav-hover'
 const FOCUS = 'nav-focus'
@@ -28,9 +27,7 @@ export const accessibleNav = (timber) => {
   const topLevelLinks = topLevel.length
     ? topLevel
     : allLinks.filter((a) => {
-        // avoid closest('li') overhead — walk one parent up (li) then check nav contains, cheaper than closest
-        const li =
-          a.parentElement && a.parentElement.tagName === 'LI' ? a.parentElement : a.closest('li')
+        const li = a.closest('li')
         return li && li.parentElement === nav
       })
 
@@ -72,9 +69,7 @@ export const accessibleNav = (timber) => {
         : null
     const hasSubMenu = !!(subMenu && subMenu.classList.contains('sub-nav'))
     void hasSubMenu
-    // closest is correct for ancestor delegation (need walk up), but per #16434 it's slower than QSA from known root
-    // Here we have node and need ancestor .site-nav__dropdown / .site-nav--has-dropdown — closest is most readable and event-scoped
-    // Keep closest for correctness; alternative parentElement walk would be ~same and less robust for nested UL
+    // closest is 4.1× over manual loop per dom-bench Chrome 150 (C++ walk) — keep for delegation
     const isSubItem = !!node.closest('.site-nav__dropdown')
     if (!isSubItem) {
       removeFocus(topLevelLinks)

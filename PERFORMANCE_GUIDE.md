@@ -90,6 +90,19 @@
 
 **Rule 0 (meta):** V8's pipeline (Ignition → Sparkplug → Maglev → TurboFan) optimizes _observed_ behavior and deopts when assumptions break; only hot functions matter, so profile first (`node --prof`, Chrome DevTools Performance, `--trace-deopt`, `%GetOptimizationStatus` with `--allow-natives-syntax`) and keep code idiomatic. V8's own engineers: _"Write idiomatic JavaScript, let the engine take care of the performance, optimize only when necessary and after careful profiling."_
 
+## 0. DOM query routing (Blink/Chromium — measured dom-bench Chrome 150)
+
+> _From `js_query_performance/` (Kimi research, Chrome 150.0.7871 headless, medians of 10 samples). Ratios are the signal; abs ops/s machine-specific. See `dom-bench/RESULTS.md` and Ch.1-6 reference.docx. Timber's DOM is ~261-2K nodes (small/medium fixture), so O(n) degradation understates risk for app-inflated docs._
+
+- **Route like Sizzle `rquickExpr`:** `#id` → `getElementById` (1.18× over `querySelector('#id')`, flat O(1) 5.8→6.0M ops/s), `.class` → `getElementsByClassName` (9.3M ops/s flat, 57× over `qSA('.cls')` @20K), `tag` → `getElementsByTagName` (11M flat, 3292× over `qSA('span')` @20K). All map/indexed; `qSA` is O(candidates) scan + static NodeList allocation. Implement bare-token dispatcher: `^#[\w-]+$`, `^\.[\w-]+$`, `^[a-zA-Z][\w-]*$`, else `qSA`.
+- **`closest()` beats manual `parentNode` loop 4.1×** (chain 500, match 50 up: 793K vs 193K ops/s). Walk is C++ with no per-level JS↔C++ crossing; selector complexity irrelevant (0.99×). Use `el.closest(sel)` for all delegation; delete `while (el = el.parentElement) { if (el.matches) }` loops.
+- **Live vs static:** live `HTMLCollection` creation ~O(1) (register filter), static `NodeList` O(n) walk+alloc. `live.length` per-iter re-validates (1.23× slower); `forEach` on NodeList 2.4× slower than cached-length `for`. Cache collection + `const n = list.length` and `for (i=0;i<n;i++)`; use `firstElementChild` (2.1× over `children[0]`) and `nextElementSibling` chain (2.3× over `nextSibling` skip, 2.2× over TreeWalker).
+- **Guard ladder:** `tagName==='DIV'` 23.9M > `classList.contains` 0.63× > `matches('.cls')` 0.44×. For pure class guard use `classList.contains`, not `matches`.
+- **Attribute selectors:** `qSA('[data-x="1"]')` 19×/12× over `getElementsByTagName('*')+manual filter` (both O(n) but qSA predicates in engine). Never grab-all-then-filter.
+- **Scoping:** `document.querySelector('.rare')` beat `scopeRoot.querySelector` 1.28× for rare class via document-level class cache (fixture-dependent). Treat scoping as cache-miss optimization, not universal; keep for encapsulation.
+
+Mimber applies this in `src/cache.js` `qq()`/`src/drawers.js` `selAll`/`src/ajax-cart.js` `qq()`/`src/product-page.js` `qq()` (rquickExpr), and `src/accessible-nav.js` + `src/ajax-cart.js` (`closest` for delegation), `src/product-page.js` + `src/drawers.js` (`for` cached length).
+
 ## A. Object shapes / hidden classes
 
 **1.** Initialize every property an object will ever have inside the constructor, in same order, every time (use `null`/`undefined` placeholders).

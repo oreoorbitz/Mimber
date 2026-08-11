@@ -12,7 +12,18 @@ const I18N_DEFAULTS = {
 }
 
 const byId = (id) => document.getElementById(id)
-const qq = (sel) => [...document.querySelectorAll(sel)]
+// rquickExpr — see cache.js (gEBCN 57×, gEBTN 3292× over qSA @20K)
+const qq = (sel, root = document) => {
+  const bare = sel.trim()
+  if (root === document) {
+    if (/^\.[\w-]+$/.test(bare)) return [...document.getElementsByClassName(bare.slice(1))]
+    if (/^[a-zA-Z][\w-]*$/.test(bare)) return [...document.getElementsByTagName(bare)]
+  } else if (root && root.nodeType === 1) {
+    if (/^\.[\w-]+$/.test(bare)) return [...root.getElementsByClassName(bare.slice(1))]
+    if (/^[a-zA-Z][\w-]*$/.test(bare)) return [...root.getElementsByTagName(bare)]
+  }
+  return [...root.querySelectorAll(sel)]
+}
 
 export const productPage = (options = {}) => {
   const moneyFormat = options.money_format || (window.Shopify && window.Shopify.money_format) || ''
@@ -49,24 +60,18 @@ export const productPage = (options = {}) => {
           addToCart.disabled = false
         }
         if (addToCartText) addToCartText.textContent = i18n.addToCart
-        quantityElements.forEach((el) => {
-          el.style.display = ''
-        })
+        for (let i = 0, n = quantityElements.length; i < n; i++) quantityElements[i].style.display = ''
         // mepto .show() sets display block; keep default
         if (quantityElements.length === 1 && quantityElements[0].style.display === 'none')
           quantityElements[0].style.display = 'block'
-        quantityElements.forEach((el) => {
-          if (el.style.display === 'none') el.style.display = 'block'
-        })
+        for (let i = 0, n = quantityElements.length; i < n; i++) if (quantityElements[i].style.display === 'none') quantityElements[i].style.display = 'block'
       } else {
         if (addToCart) {
           addToCart.classList.add('disabled')
           addToCart.disabled = true
         }
         if (addToCartText) addToCartText.textContent = i18n.soldOut
-        quantityElements.forEach((el) => {
-          el.style.display = 'none'
-        })
+        for (let i = 0, n = quantityElements.length; i < n; i++) quantityElements[i].style.display = 'none'
       }
 
       if (productPrice) {
@@ -95,9 +100,7 @@ export const productPage = (options = {}) => {
         addToCart.disabled = true
       }
       if (addToCartText) addToCartText.textContent = i18n.unavailable
-      quantityElements.forEach((el) => {
-        el.style.display = 'none'
-      })
+      for (let i = 0, n = quantityElements.length; i < n; i++) quantityElements[i].style.display = 'none'
     }
   })
 }

@@ -47,10 +47,22 @@ export class Drawer {
   }
 
   init() {
-    const openEls = [...document.querySelectorAll(this.config.open)]
-    openEls.forEach((el) => el.addEventListener('click', this.open.bind(this)))
-    const closeEls = this.drawer ? [...this.drawer.querySelectorAll(this.config.close)] : []
-    closeEls.forEach((el) => el.addEventListener('click', this.close.bind(this)))
+    // rquickExpr fast path — see cache.js (gEBCN 57×, gEBTN 3292× over qSA @20K)
+    const selAll = (sel, root = document) => {
+      const bare = sel.trim()
+      if (root === document) {
+        if (/^\.[\w-]+$/.test(bare)) return [...document.getElementsByClassName(bare.slice(1))]
+        if (/^[a-zA-Z][\w-]*$/.test(bare)) return [...document.getElementsByTagName(bare)]
+      } else if (root && root.nodeType === 1) {
+        if (/^\.[\w-]+$/.test(bare)) return [...root.getElementsByClassName(bare.slice(1))]
+        if (/^[a-zA-Z][\w-]*$/.test(bare)) return [...root.getElementsByTagName(bare)]
+      }
+      return [...root.querySelectorAll(sel)]
+    }
+    const openEls = selAll(this.config.open)
+    for (let i = 0, n = openEls.length; i < n; i++) openEls[i].addEventListener('click', this.open.bind(this))
+    const closeEls = this.drawer ? selAll(this.config.close, this.drawer) : []
+    for (let i = 0, n = closeEls.length; i < n; i++) closeEls[i].addEventListener('click', this.close.bind(this))
   }
 
   open(evt) {
@@ -70,11 +82,9 @@ export class Drawer {
     trigger(body, 'beforeDrawerOpen.timber', this)
 
     scheduler.mutate(() => {
-      this.nodes.moved.forEach((el) => el.classList.add('is-transitioning'))
+      for (let i = 0, n = this.nodes.moved.length; i < n; i++) this.nodes.moved[i].classList.add('is-transitioning')
       prepareTransition(this.drawer)
-      this.nodes.parent.forEach((el) =>
-        el.classList.add(this.config.openClass, this.config.dirOpenClass)
-      )
+      for (let i = 0, n = this.nodes.parent.length; i < n; i++) this.nodes.parent[i].classList.add(this.config.openClass, this.config.dirOpenClass)
     })
     this.drawerIsOpen = true
 
@@ -132,11 +142,9 @@ export class Drawer {
     }
 
     scheduler.mutate(() => {
-      this.nodes.moved.forEach((el) => prepareTransition(el))
+      for (let i = 0, n = this.nodes.moved.length; i < n; i++) prepareTransition(this.nodes.moved[i])
       prepareTransition(this.drawer)
-      this.nodes.parent.forEach((el) =>
-        el.classList.remove(this.config.dirOpenClass, this.config.openClass)
-      )
+      for (let i = 0, n = this.nodes.parent.length; i < n; i++) this.nodes.parent[i].classList.remove(this.config.dirOpenClass, this.config.openClass)
     })
     this.drawerIsOpen = false
 

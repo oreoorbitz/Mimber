@@ -54,3 +54,4 @@ assets/logo.png
 # Mimber audit artifacts (generated per-client)
 audit.json
 audit.md
+js_query_performance/

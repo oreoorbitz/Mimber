@@ -1,11 +1,27 @@
 // timber.cacheSelectors — Mepto/native
-// Why: per measurethat #16434 (closest vs querySelector) and getElementById vs QSA, use fastest
-// query for situation: getElementById for #id, getElementsByClassName for .class, QSA only for complex.
+// Why: rquickExpr routing per dom-bench (Chrome 150, Blink): getElementById 1.18×>qS('#id'), gEBCN 57×>qSA('.cls') @20K,
+//      gEBTN 3292×>qSA('span') @20K, closest 4.1×>manual loop. Route simple selectors to fastest primitive.
 import { $ } from './mepto.js'
 
 const byId = (id) => document.getElementById(id)
 const q = (sel, root = document) => root.querySelector(sel)
-const qq = (sel, root = document) => [...root.querySelectorAll(sel)]
+// rquickExpr fast paths — Sizzle-style (sec06 §6.2.1): #id→gEBI, .class→gEBCN, TAG→gEBTN, else qSA
+const qq = (sel, root = document) => {
+  const bare = sel.trim()
+  // fast paths only when root is document or element without scoping need
+  if (root === document) {
+    if (/^#[\w-]+$/.test(bare)) {
+      const el = document.getElementById(bare.slice(1))
+      return el ? [el] : []
+    }
+    if (/^\.[\w-]+$/.test(bare)) return [...document.getElementsByClassName(bare.slice(1))]
+    if (/^[a-zA-Z][\w-]*$/.test(bare)) return [...document.getElementsByTagName(bare)]
+  } else if (root && root.nodeType === 1) {
+    if (/^\.[\w-]+$/.test(bare)) return [...root.getElementsByClassName(bare.slice(1))]
+    if (/^[a-zA-Z][\w-]*$/.test(bare)) return [...root.getElementsByTagName(bare)]
+  }
+  return [...root.querySelectorAll(sel)]
+}
 
 export const cacheSelectors = (timber) => {
   // Keep $ prefix for bw compat; values are Mepto collections if mepto present else native arrays/elements

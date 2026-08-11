@@ -5,7 +5,22 @@ import { ShopifyAPI } from './shopify-api.js'
 import { scheduler } from './scheduler.js'
 
 const q = (sel, root = document) => root.querySelector(sel)
-const qq = (sel, root = document) => [...root.querySelectorAll(sel)]
+// rquickExpr fast paths — see cache.js (dom-bench 57× gEBCN>qSA, 3292× gEBTN>qSA @20K)
+const qq = (sel, root = document) => {
+  const bare = sel.trim()
+  if (root === document) {
+    if (/^#[\w-]+$/.test(bare)) {
+      const el = document.getElementById(bare.slice(1))
+      return el ? [el] : []
+    }
+    if (/^\.[\w-]+$/.test(bare)) return [...document.getElementsByClassName(bare.slice(1))]
+    if (/^[a-zA-Z][\w-]*$/.test(bare)) return [...document.getElementsByTagName(bare)]
+  } else if (root && root.nodeType === 1) {
+    if (/^\.[\w-]+$/.test(bare)) return [...root.getElementsByClassName(bare.slice(1))]
+    if (/^[a-zA-Z][\w-]*$/.test(bare)) return [...root.getElementsByTagName(bare)]
+  }
+  return [...root.querySelectorAll(sel)]
+}
 
 const I18N = {
   empty: 'Your cart is empty',
