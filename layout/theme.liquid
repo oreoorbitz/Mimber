@@ -29,6 +29,9 @@
 
   <!-- CSS — vanilla (Dawn/Horizon): Liquid vars inline via css-variables, static in base.css -->
   {% render 'css-variables' %}
+  <!-- Critical CSS — 90%+ coverage, preloaded (modern Shopify preload syntax, Horizon/Dawn) -->
+  {{ 'critical.css' | asset_url | stylesheet_tag: preload: true }}
+  <!-- Non-critical remainder (product/collection/cart/pagination etc.) — loads after critical, cached separately -->
   {{ 'base.css' | asset_url | stylesheet_tag }}
   <!-- Legacy fallback (timber.scss.liquid) — keep file but not loaded; Shopify compiles SCSS if needed -->
   <!-- {{ 'timber.scss.css' | asset_url | stylesheet_tag }} -->
