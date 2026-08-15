@@ -18,18 +18,18 @@ Mimber is a **reference DB**, not an installable theme. Fork of `Shopify/Timber@
 
 Timber is **Shopify 1.0** (`assets/layout/snippets/templates/config`). `shopify theme` CLI is 2.0 and rejects 1.0. Use **bundled ThemeKit fork** (`oreoorbitz/themekit`, Go, vendored at `vendor/themekit` + bundled with Mepto `meptos` for customization) — Go is required (LLM does the store update, developer installs Go). Order: JS → CSS → Liquid (this repo does JS first, CSS/Liquid last).
 
-**Go orchestrator** (`go` 1.22+ `Cobra`): `cmd/mimber` wraps all three — `vendor/themekit/cmd/mimber` is canonical `mimber` CLI (imports ThemeKit as lib); `Mimber/cmd/mimber/main.go` proxy (`go run ./cmd/mimber`). Build single `bin/mimber` (`go build -o bin/mimber ./cmd/mimber`).
+**Go orchestrator** (`go` 1.22+ `Cobra`): `cmd/mimber` wraps all three — `vendor/themekit/cmd/mimber` is canonical `mimber` CLI (imports ThemeKit as lib); `Mimber/cmd/mimber/main.go` proxy (`go run -mod=mod ./cmd/mimber` — `-mod=mod` required because `vendor/themekit` is a local `replace` inside the Go `vendor/` directory, which otherwise triggers `inconsistent vendoring` (see `go help modules`); all `npm run mimber:*` scripts already pass `-mod=mod`). Build single `bin/mimber` (`go build -mod=mod -o bin/mimber ./cmd/mimber`).
 
 | Step | Command | What |
 |---|---|---|
 | 1 | `cp config.yml.example config.yml` | Fill `store`, `password` (private app), `theme_id` or `THEMEKIT_STORE/THEMEKIT_PASSWORD/THEMEKIT_THEME_ID` env |
-| 2 | `go run ./cmd/mimber build` (`npm run mimber:build`) | `esbuild` Go `es2017≈last3` → `dist/timber.*.js` + `dist/theme` (Shopify 1.0 structure + modern `assets/timber.js`) |
-| 3 | `go run ./cmd/mimber deploy` (`npm run mimber:deploy`) | Upload `dist/theme` via bundled fork `vendor/themekit/bin/theme` (`go build -o vendor/themekit/bin/theme ./vendor/themekit/...`) |
-| 4 | `go run ./cmd/mimber preview --url` (`npm run mimber:preview`) | Print `https://{store}/?_ab=0&_fd=0&_sc=1&preview_theme_id={theme_id}` (x.y + z from `config.yml`/`--store`/`--theme-id`) |
-| 5 | `go run ./cmd/mimber harness --preview` (`npm run mimber:harness`) | Build → deploy → `playwright --grep preview` (full store preview) |
-| 5 local | `go run ./cmd/mimber harness` | Build → `playwright --grep local` (offline `dist/theme` checks, 2 tests, ~0.6s) |
+| 2 | `go run -mod=mod ./cmd/mimber build` (`npm run mimber:build`) | `esbuild` Go `es2017≈last3` → `dist/timber.*.js` + `dist/theme` (Shopify 1.0 structure + modern `assets/timber.js`) |
+| 3 | `go run -mod=mod ./cmd/mimber deploy` (`npm run mimber:deploy`) | Upload `dist/theme` via bundled fork `vendor/themekit/bin/theme` (`go build -mod=mod -o vendor/themekit/bin/theme ./vendor/themekit/...`) |
+| 4 | `go run -mod=mod ./cmd/mimber preview --url` (`npm run mimber:preview`) | Print `https://{store}/?_ab=0&_fd=0&_sc=1&preview_theme_id={theme_id}` (x.y + z from `config.yml`/`--store`/`--theme-id`) |
+| 5 | `go run -mod=mod ./cmd/mimber harness --preview` (`npm run mimber:harness`) | Build → deploy → `playwright --grep preview` (full store preview) |
+| 5 local | `go run -mod=mod ./cmd/mimber harness` | Build → `playwright --grep local` (offline `dist/theme` checks, 2 tests, ~0.6s) |
 
-Env: `THEMEKIT_STORE=foo.myshopify.com THEMEKIT_THEME_ID=123456789 THEMEKIT_PASSWORD=xxx go run ./cmd/mimber harness --preview`.
+Env: `THEMEKIT_STORE=foo.myshopify.com THEMEKIT_THEME_ID=123456789 THEMEKIT_PASSWORD=xxx go run -mod=mod ./cmd/mimber harness --preview` — `-mod=mod` required (local `replace` `vendor/themekit` lives inside Go `vendor/` dir; without it `go: inconsistent vendoring`).
 
 ---
 
