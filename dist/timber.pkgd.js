@@ -1,3 +1,5 @@
+/*! Mimber Mepto v2.2.2-mepto.1 — Mepto-integrated, jQuery-free (esbuild Go) */
+
 var TimberMepto = (() => {
   var __defProp = Object.defineProperty;
   var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -202,7 +204,21 @@ var TimberMepto = (() => {
   // src/cache.js
   var byId = (id) => document.getElementById(id);
   var q = (sel, root = document) => root.querySelector(sel);
-  var qq = (sel, root = document) => [...root.querySelectorAll(sel)];
+  var qq = (sel, root = document) => {
+    const bare = sel.trim();
+    if (root === document) {
+      if (/^#[\w-]+$/.test(bare)) {
+        const el = document.getElementById(bare.slice(1));
+        return el ? [el] : [];
+      }
+      if (/^\.[\w-]+$/.test(bare)) return [...document.getElementsByClassName(bare.slice(1))];
+      if (/^[a-zA-Z][\w-]*$/.test(bare)) return [...document.getElementsByTagName(bare)];
+    } else if (root && root.nodeType === 1) {
+      if (/^\.[\w-]+$/.test(bare)) return [...root.getElementsByClassName(bare.slice(1))];
+      if (/^[a-zA-Z][\w-]*$/.test(bare)) return [...root.getElementsByTagName(bare)];
+    }
+    return [...root.querySelectorAll(sel)];
+  };
   var cacheSelectors = (timber) => {
     const mepto = $ ? window.mepto || window.jQuery : null;
     const useMepto = !!mepto;
@@ -367,7 +383,17 @@ var TimberMepto = (() => {
     compareAt: "Compare at"
   };
   var byId2 = (id) => document.getElementById(id);
-  var qq2 = (sel) => [...document.querySelectorAll(sel)];
+  var qq2 = (sel, root = document) => {
+    const bare = sel.trim();
+    if (root === document) {
+      if (/^\.[\w-]+$/.test(bare)) return [...document.getElementsByClassName(bare.slice(1))];
+      if (/^[a-zA-Z][\w-]*$/.test(bare)) return [...document.getElementsByTagName(bare)];
+    } else if (root && root.nodeType === 1) {
+      if (/^\.[\w-]+$/.test(bare)) return [...root.getElementsByClassName(bare.slice(1))];
+      if (/^[a-zA-Z][\w-]*$/.test(bare)) return [...root.getElementsByTagName(bare)];
+    }
+    return [...root.querySelectorAll(sel)];
+  };
   var productPage = (options = {}) => {
     const moneyFormat = options.money_format || window.Shopify && window.Shopify.money_format || "";
     const variant = options.variant;
@@ -394,23 +420,17 @@ var TimberMepto = (() => {
             addToCart2.disabled = false;
           }
           if (addToCartText) addToCartText.textContent = i18n.addToCart;
-          quantityElements.forEach((el) => {
-            el.style.display = "";
-          });
+          for (let i = 0, n = quantityElements.length; i < n; i++) quantityElements[i].style.display = "";
           if (quantityElements.length === 1 && quantityElements[0].style.display === "none")
             quantityElements[0].style.display = "block";
-          quantityElements.forEach((el) => {
-            if (el.style.display === "none") el.style.display = "block";
-          });
+          for (let i = 0, n = quantityElements.length; i < n; i++) if (quantityElements[i].style.display === "none") quantityElements[i].style.display = "block";
         } else {
           if (addToCart2) {
             addToCart2.classList.add("disabled");
             addToCart2.disabled = true;
           }
           if (addToCartText) addToCartText.textContent = i18n.soldOut;
-          quantityElements.forEach((el) => {
-            el.style.display = "none";
-          });
+          for (let i = 0, n = quantityElements.length; i < n; i++) quantityElements[i].style.display = "none";
         }
         if (productPrice) {
           const fmt = window.Shopify && window.Shopify.formatMoney ? window.Shopify.formatMoney(variant.price, moneyFormat) : String(variant.price);
@@ -431,9 +451,7 @@ var TimberMepto = (() => {
           addToCart2.disabled = true;
         }
         if (addToCartText) addToCartText.textContent = i18n.unavailable;
-        quantityElements.forEach((el) => {
-          el.style.display = "none";
-        });
+        for (let i = 0, n = quantityElements.length; i < n; i++) quantityElements[i].style.display = "none";
       }
     });
   };
@@ -457,7 +475,7 @@ var TimberMepto = (() => {
     const directLis = [...nav.children].filter((el) => el.tagName === "LI");
     const topLevel = directLis.length ? directLis.flatMap((li) => [...li.querySelectorAll("a")]) : [...nav.querySelectorAll(":scope > li a")];
     const topLevelLinks = topLevel.length ? topLevel : allLinks.filter((a) => {
-      const li = a.parentElement && a.parentElement.tagName === "LI" ? a.parentElement : a.closest("li");
+      const li = a.closest("li");
       return li && li.parentElement === nav;
     });
     const parents = [...nav.getElementsByClassName("site-nav--has-dropdown")];
@@ -550,10 +568,21 @@ var TimberMepto = (() => {
       this.init();
     }
     init() {
-      const openEls = [...document.querySelectorAll(this.config.open)];
-      openEls.forEach((el) => el.addEventListener("click", this.open.bind(this)));
-      const closeEls = this.drawer ? [...this.drawer.querySelectorAll(this.config.close)] : [];
-      closeEls.forEach((el) => el.addEventListener("click", this.close.bind(this)));
+      const selAll = (sel, root = document) => {
+        const bare = sel.trim();
+        if (root === document) {
+          if (/^\.[\w-]+$/.test(bare)) return [...document.getElementsByClassName(bare.slice(1))];
+          if (/^[a-zA-Z][\w-]*$/.test(bare)) return [...document.getElementsByTagName(bare)];
+        } else if (root && root.nodeType === 1) {
+          if (/^\.[\w-]+$/.test(bare)) return [...root.getElementsByClassName(bare.slice(1))];
+          if (/^[a-zA-Z][\w-]*$/.test(bare)) return [...root.getElementsByTagName(bare)];
+        }
+        return [...root.querySelectorAll(sel)];
+      };
+      const openEls = selAll(this.config.open);
+      for (let i = 0, n = openEls.length; i < n; i++) openEls[i].addEventListener("click", this.open.bind(this));
+      const closeEls = this.drawer ? selAll(this.config.close, this.drawer) : [];
+      for (let i = 0, n = closeEls.length; i < n; i++) closeEls[i].addEventListener("click", this.close.bind(this));
     }
     open(evt) {
       let externalCall = false;
@@ -567,11 +596,9 @@ var TimberMepto = (() => {
       const body = window.timber && window.timber.cache && unwrap2(window.timber.cache.$body) || document.body;
       trigger(body, "beforeDrawerOpen.timber", this);
       scheduler.mutate(() => {
-        this.nodes.moved.forEach((el) => el.classList.add("is-transitioning"));
+        for (let i = 0, n = this.nodes.moved.length; i < n; i++) this.nodes.moved[i].classList.add("is-transitioning");
         prepareTransition(this.drawer);
-        this.nodes.parent.forEach(
-          (el) => el.classList.add(this.config.openClass, this.config.dirOpenClass)
-        );
+        for (let i = 0, n = this.nodes.parent.length; i < n; i++) this.nodes.parent[i].classList.add(this.config.openClass, this.config.dirOpenClass);
       });
       this.drawerIsOpen = true;
       this.trapFocus(this.drawer, "drawer_focus");
@@ -612,11 +639,9 @@ var TimberMepto = (() => {
         }
       }
       scheduler.mutate(() => {
-        this.nodes.moved.forEach((el) => prepareTransition(el));
+        for (let i = 0, n = this.nodes.moved.length; i < n; i++) prepareTransition(this.nodes.moved[i]);
         prepareTransition(this.drawer);
-        this.nodes.parent.forEach(
-          (el) => el.classList.remove(this.config.dirOpenClass, this.config.openClass)
-        );
+        for (let i = 0, n = this.nodes.parent.length; i < n; i++) this.nodes.parent[i].classList.remove(this.config.dirOpenClass, this.config.openClass);
       });
       this.drawerIsOpen = false;
       this.removeTrapFocus(this.drawer, "drawer_focus");
@@ -826,7 +851,21 @@ var TimberMepto = (() => {
 
   // src/ajax-cart.js
   var q2 = (sel, root = document) => root.querySelector(sel);
-  var qq3 = (sel, root = document) => [...root.querySelectorAll(sel)];
+  var qq3 = (sel, root = document) => {
+    const bare = sel.trim();
+    if (root === document) {
+      if (/^#[\w-]+$/.test(bare)) {
+        const el = document.getElementById(bare.slice(1));
+        return el ? [el] : [];
+      }
+      if (/^\.[\w-]+$/.test(bare)) return [...document.getElementsByClassName(bare.slice(1))];
+      if (/^[a-zA-Z][\w-]*$/.test(bare)) return [...document.getElementsByTagName(bare)];
+    } else if (root && root.nodeType === 1) {
+      if (/^\.[\w-]+$/.test(bare)) return [...root.getElementsByClassName(bare.slice(1))];
+      if (/^[a-zA-Z][\w-]*$/.test(bare)) return [...root.getElementsByTagName(bare)];
+    }
+    return [...root.querySelectorAll(sel)];
+  };
   var I18N = {
     empty: "Your cart is empty",
     savingsHtml: "You save [savings]"

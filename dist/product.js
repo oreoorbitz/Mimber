@@ -1,14 +1,16 @@
+/*! Mimber Mepto v2.2.2-mepto.1 — Mepto-integrated, jQuery-free (esbuild Go) */
+
 import {
   cacheSelectors
-} from "./chunk-DJ46SEGG.js";
+} from "./chunk-FKLTZ7RG.js";
 import {
   productImageSwitch,
   switchImage
-} from "./chunk-5BJ3D3CN.js";
+} from "./chunk-7ONAE77C.js";
 import {
   __spreadValues,
   scheduler
-} from "./chunk-R3VCPEU7.js";
+} from "./chunk-KK2RWA72.js";
 
 // src/product-page.js
 var I18N_DEFAULTS = {
@@ -18,7 +20,17 @@ var I18N_DEFAULTS = {
   compareAt: "Compare at"
 };
 var byId = (id) => document.getElementById(id);
-var qq = (sel) => [...document.querySelectorAll(sel)];
+var qq = (sel, root = document) => {
+  const bare = sel.trim();
+  if (root === document) {
+    if (/^\.[\w-]+$/.test(bare)) return [...document.getElementsByClassName(bare.slice(1))];
+    if (/^[a-zA-Z][\w-]*$/.test(bare)) return [...document.getElementsByTagName(bare)];
+  } else if (root && root.nodeType === 1) {
+    if (/^\.[\w-]+$/.test(bare)) return [...root.getElementsByClassName(bare.slice(1))];
+    if (/^[a-zA-Z][\w-]*$/.test(bare)) return [...root.getElementsByTagName(bare)];
+  }
+  return [...root.querySelectorAll(sel)];
+};
 var productPage = (options = {}) => {
   const moneyFormat = options.money_format || window.Shopify && window.Shopify.money_format || "";
   const variant = options.variant;
@@ -45,23 +57,17 @@ var productPage = (options = {}) => {
           addToCart.disabled = false;
         }
         if (addToCartText) addToCartText.textContent = i18n.addToCart;
-        quantityElements.forEach((el) => {
-          el.style.display = "";
-        });
+        for (let i = 0, n = quantityElements.length; i < n; i++) quantityElements[i].style.display = "";
         if (quantityElements.length === 1 && quantityElements[0].style.display === "none")
           quantityElements[0].style.display = "block";
-        quantityElements.forEach((el) => {
-          if (el.style.display === "none") el.style.display = "block";
-        });
+        for (let i = 0, n = quantityElements.length; i < n; i++) if (quantityElements[i].style.display === "none") quantityElements[i].style.display = "block";
       } else {
         if (addToCart) {
           addToCart.classList.add("disabled");
           addToCart.disabled = true;
         }
         if (addToCartText) addToCartText.textContent = i18n.soldOut;
-        quantityElements.forEach((el) => {
-          el.style.display = "none";
-        });
+        for (let i = 0, n = quantityElements.length; i < n; i++) quantityElements[i].style.display = "none";
       }
       if (productPrice) {
         const fmt = window.Shopify && window.Shopify.formatMoney ? window.Shopify.formatMoney(variant.price, moneyFormat) : String(variant.price);
@@ -82,9 +88,7 @@ var productPage = (options = {}) => {
         addToCart.disabled = true;
       }
       if (addToCartText) addToCartText.textContent = i18n.unavailable;
-      quantityElements.forEach((el) => {
-        el.style.display = "none";
-      });
+      for (let i = 0, n = quantityElements.length; i < n; i++) quantityElements[i].style.display = "none";
     }
   });
 };

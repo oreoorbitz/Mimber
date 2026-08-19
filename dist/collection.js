@@ -1,10 +1,12 @@
+/*! Mimber Mepto v2.2.2-mepto.1 — Mepto-integrated, jQuery-free (esbuild Go) */
+
 import {
   cacheSelectors
-} from "./chunk-DJ46SEGG.js";
+} from "./chunk-FKLTZ7RG.js";
 import {
   collectionViews
-} from "./chunk-5BJ3D3CN.js";
-import "./chunk-R3VCPEU7.js";
+} from "./chunk-7ONAE77C.js";
+import "./chunk-KK2RWA72.js";
 
 // src/entry/collection.js
 if (typeof window !== "undefined") {

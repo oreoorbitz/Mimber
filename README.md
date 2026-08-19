@@ -1,97 +1,172 @@
-# Mimber — Mepto-modernized Timber 2.2.2 (reference DB, not a new theme)
+# Mimber — Timber, modernized
 
-> **Mimber is a reference DB fork of `Shopify/Timber@2.2.2` (MIT, 2014)** — the 10yr-old ancestor of most Timber-based client themes. It is **not** a drop-in replacement. Client themes have 5–10yr divergent edits; diff against Mimber, then apply Mepto/Go patches to *client* files. For LLM paste-and-modernize workflow, start at **`AGENTS.md`**.
+**Timber 2.2.2, rebuilt with Mepto + Go.** A reference fork of [Shopify/Timber](https://github.com/Shopify/Timber) (2014, MIT) for the thousands of live stores still running it. Not a new theme — a **copy-paste reference** to modernize your Timber fork without rewriting your business logic.
 
-Upstream Timber itself is deprecated by Shopify — see [Slate](https://github.com/Shopify/slate) for new themes. Mimber exists to modernize the JS/CSS/Liquid of existing Timber forks without rewriting business logic.
+> **Start here:** `AGENTS.md` is the router for LLMs. This README is for humans.
 
----
-
-## What’s modernized (slices 0–13, Go `esbuild` + Mepto + vanilla CSS)
-
-| Slice | What | Key change |
-|---|---|---|
-| **0** `cf8216d` | `timber.human.js` + deletes | `fastclick`/`modernizr`/`respond` → `touch-action: manipulation` |
-| **1–6** | `timber.js.liquid` 496L + `ajax-cart.js.liquid` 563L = **1059L** | `prepareTransition`/`formatMoney`/`cache`/`productPage`/`accessibleNav`/`Drawers`/`ShopifyAPI+ajaxCart` → `mepto` (`window.mepto||jQuery`) → `classList`/`fetch`/`CustomEvent`/`DocumentFragment`/`Object.assign`/`bind` |
-| **7** `a12db69` | `handlebars.min.js` **46K deleted** + `theme.liquid`/`ajax-cart-template`/`collection-sorting`/`product` | `Handlebars.compile` → native `<template>` clone, `jquery/1.12.4` CDN → `mepto.js`, `jQuery.param` → `URLSearchParams`, `jQuery(function` → `DOMContentLoaded` — **save 46K+1 req, 0 `jQuery` in theme** |
-| **8** `ad29cf6` | Query optimization (measurethat #16434) | `getElementById` for `#id`, `getElementsByClassName/TagName` for `.class`/`a`, `QSA` only for `[data-*]`, `closest` only for delegation (`closest 13.8M vs querySelector 16.1M Ops/sec` in Chrome) |
-| **9** | Per-template splitting (HTTP/2) | `global` 2.8K + `product` 0.9K + `collection` 0.3K + `customer` 0.3K + `cart` 4.1K gzip + shared chunks; per-page `global 4.9K`/`product 5.8K`/`cart+global 9.0K` (<14K) via `esbuild splitting` + `type="module"` |
-| **10** | Quality gates | `eslint@9` flat + `prettier@3` + `vitest@4 jsdom` 12 tests + `stylelint@16` + `playwright 2 local` |
-| **11** | Locale-aware Ajax | `Shopify.routes.root` `{{ routes.root_url }}` per [Shopify Ajax locale](https://shopify.dev/docs/api/ajax/reference/cart#get--locale-cartjs) — `cartUrl()` helper, 4 endpoints (`/cart.js`→`/{locale}/cart.js`) |
-| **12–13** | CSS vanilla (Dawn/Horizon) | `timber.scss.liquid` 58K SCSS → `assets/base.css` 66K vanilla CSS (Dawn/Horizon `snippets/css-variables.liquid` `{% style %}:root{--color-primary:{{ settings.color_primary }}}`), `gift-card.css`, `*zoom`/`prefixer`/`-webkit` removed |
-
-Build: **Go `github.com/evanw/esbuild v0.25`** (`es2017≈last3`, `bundle/minify` + `splitting` for `global/product/collection/customer/cart`) + **ThemeKit fork** `oreoorbitz/themekit` (`Go`, `vendor/themekit`, 1.0 — `shopify theme` 2.0 rejects Timber 1.0). Order **JS → CSS → Liquid** (JS done, CSS vanilla done). `dist/timber.pkgd.min.js 8.7K gzip` + `dist/{global,product,collection,customer,cart}.min.js` + `dist/theme` (Shopify 1.0 for deploy).
+Live demo (unpublished, preview):
+- **Mimber (this repo):** `https://orionsuperteststore.myshopify.com?_ab=0&_fd=0&_sc=1&preview_theme_id=130563899438`
+- **Base Timber:** `https://orionsuperteststore.myshopify.com?_ab=0&_fd=0&_sc=1&preview_theme_id=130563932206`
 
 ---
 
-## Quick start (Go + Node)
+## What you get
+
+Mimber keeps your store looking the same, but ships **~60% smaller, faster JS/CSS**:
+
+- **No jQuery** — `window.mepto || jQuery` fallback, `fetch` + `ShopifyAPI`, `classList`, `CustomEvent`
+- **No Handlebars** — 46K `handlebars.min.js` deleted, native `<template>` (save 1 request)
+- **No SCSS build** — `timber.scss.liquid` (58K) → vanilla `assets/base.css` (Dawn/Horizon `css-variables`)
+- **Split JS** — `global` + `product` + `collection` + `customer` + `cart` as `type="module"` chunks, each <14K gzip (HTTP/2), plus legacy `timber.pkgd.min.js` fallback
+- **Images** — `img_url: 'large'` → `image_url: width: 400 | image_tag: loading: 'lazy'` / `eager` + `fetchpriority: high` for LCP
+
+Full slice log → `AGENTS.md` (slices 0–13, 15, 17). Perf notes → `PERFORMANCE_GUIDE.md`.
+
+---
+
+## Quick start
+
+**Requires:** Node 22 + Go 1.22. `nvm use`, `go version`.
 
 ```bash
-# Audit first (static analysis for LLM starter — Dawn/Horizon + locale + splitting)
-npm run audit        # or: go run ./cmd/mimber audit --json | jq .
-# Requires Go 1.22+ (LLM does the work, dev installs Go) + Node 22 (nvm use, for Playwright)
 git clone https://github.com/oreoorbitz/Mimber && cd Mimber
-git submodule update --init vendor/themekit   # oreoorbitz/themekit fork (Go)
+git submodule update --init vendor/themekit   # ThemeKit fork (1.0, Go)
 npm install
+npx playwright install --with-deps chromium    # first time
 
-# Go orchestrator (single binary)
-go run ./cmd/mimber build        # esbuild Go → dist/timber.* + dist/theme (1.0 + modern assets/timber.js)
-go run ./cmd/mimber preview --url --store x.y --theme-id z
-go run ./cmd/mimber harness --preview  # build→deploy→playwright preview
-go run ./cmd/mimber harness      # build→playwright local (offline, 2 tests)
-# binary: go build -o bin/mimber ./cmd/mimber && ./bin/mimber --help
+# 1) configure your store (one time)
+cp config.yml.example config.yml
+# edit store, password (private app), theme_id — or use env:
+# THEMEKIT_STORE=your-store.myshopify.com THEMEKIT_PASSWORD=shppa_... THEMEKIT_THEME_ID=123
+
+# 2) build + check
+npm run build          # image/js/a11y/liquid checks → esbuild Go → dist/theme
+npm run check          # same checks + lint + typecheck
+
+# 3) deploy + preview
+npm run build          # or: go run ./cmd/mimber build
+./bin/mimber preview --url
+# or with env
+THEMEKIT_STORE=... THEMEKIT_THEME_ID=... ./bin/mimber preview --url
+
+# deploy the built theme
+./bin/mimber deploy
+# or: npm run mimber:deploy
 ```
 
-Preview needs `cp config.yml.example config.yml` → `store=x.y` (`myshopify.com`), `theme_id=z`, `password` (or `THEMEKIT_STORE/THEMEKIT_THEME_ID/THEMEKIT_PASSWORD` env) → `https://x.y/?_ab=0&_fd=0&_sc=1&preview_theme_id=z`.
-
-One-offs: `npx playwright install --with-deps chromium` (first time), `go run ./cmd/mimber build` is `npm run build` (now Go, no Vite).
+Single binary: `go build -mod=mod -o bin/mimber ./cmd/mimber && ./bin/mimber --help`
 
 ---
 
-## Using Mimber to modernize a client store (paste → LLM)
+## Using Mimber on a client store
 
-1. `cp -r Mimber mimber-reference/` into client repo.
-2. Prompt LLM: `Read mimber-reference/AGENTS.md then modernize assets/timber.js` (AGENTS routes to `LLM_REFERENCE.md`/slice files).
-3. LLM diffs `mimber-reference/assets/timber.human.js` (prettified 496L) vs `client/assets/timber.js`, applies slice patterns from `src/cache.js` etc. — preserves client `product.js` forks, sections, apps.
-4. Build `mimber-reference` (`go run ./cmd/mimber build`) → `cp dist/theme/assets/timber.js → client/assets/timber.js` (keep `.liquid` header if any), update `layout/theme.liquid` (`mepto.js`).
+Most client themes are 5–10yr forks of Timber. Don't replace them — **diff against Mimber**:
 
-See **`AGENTS.md`** (orchestrator, router, slice status, File Map, Mepto mapping, Build loop) and **`LLM_REFERENCE.md`** (RAG: diff workflow, handlebars/native `<template>`, `URLSearchParams`, divergences, verification). `PERFORMANCE_GUIDE.md` Part I DOM > Part II V8.
+1. Copy this folder into the client repo: `cp -r Mimber mimber-reference/`
+2. Tell your LLM: *“Read `mimber-reference/AGENTS.md` then modernize `assets/timber.js`.”*
+3. The LLM diffs `mimber-reference/assets/timber.human.js` (readable 496L) vs `client/assets/timber.js` and applies the slice patterns (`src/cache.js`, `src/drawers.js`, etc.) — preserving the client's `product.js` forks and apps.
+4. Build in `mimber-reference`: `./bin/mimber build` → copy `dist/theme/assets/timber.js` → `client/assets/timber.js`, update `layout/theme.liquid` to load `mepto.js` + `base.css` + `css-variables`.
+
+That’s it. No `bower`, no `Vite`, no `shopify theme` 2.0 (it rejects Timber 1.0 — use the bundled ThemeKit).
+
+---
+
+## CLI
+
+| Command | What |
+|---|---|
+| `go run ./cmd/mimber build` | `image`/`js`/`a11y`/`liquid` checks + `esbuild` → `dist/timber.*` + `dist/theme` |
+| `go run ./cmd/mimber deploy` | Upload `dist/theme` (`config.yml` `store`/`theme_id`/`password`) |
+| `go run ./cmd/mimber preview --url` | Print `https://x.y/?_ab=0&_fd=0&_sc=1&preview_theme_id=z` |
+| `go run ./cmd/mimber harness` | `build` → `playwright --grep local` (offline, 2 tests) |
+| `go run ./cmd/mimber harness --preview` | `build` → `deploy` → `playwright --grep preview` (live store) |
+| `go run ./cmd/mimber harness --compare` | Visual compare: base `130563932206` vs Mimber `130563899438` (5 routes, `playwright-report/compare/`) |
+
+`npm run` aliases: `build`, `check`, `mimber:build`, `mimber:deploy`, `mimber:preview`, `mimber:harness`, `test:compare`, `audit`, `liquid:check`.
+
+---
+
+## Checks (Go, offline, no store auth)
+
+All six run in `npm run build` and `go run ./cmd/mimber build` (`MIMBER_SKIP_CHECKS=1` to bypass):
+
+| Check | Command | What it catches |
+|---|---|---|
+| `image` | `go run ./cmd/image-analyzer --check . --json` | `img_url: 'large'` → `image_url: width:` + `image_tag` `alt`/`widths`/`loading` |
+| `js` | `go run ./cmd/js-analyzer --check .` | `$.ajax`/`$.extend`/`Handlebars` → `fetch`/`<template>`, locale `cartUrl()` |
+| `a11y` | `go run ./cmd/a11y-analyzer --check .` | `alt`, `input` `label`/`aria-label`, `button` `type`/`name`, `h1` hierarchy |
+| `liquid` | `node scripts/liquid-check.mjs` + `go run ./cmd/mimber liquid --check` | `image_url`/`image_tag`/`paginate`/`render` mocks, `config/` drops any |
+| `css` | `go run ./cmd/css-analyzer --json` | 90%+ `critical.css` vs `base.css` |
+| `audit` | `node scripts/audit.mjs --json` | 13 rules, score 0–100 → `audit.json` for LLM starter |
+
+Current Mimber: `image 0` · `js 0 high (11 closest low)` · `a11y 0 high (1 medium cart qty)` · `liquid 42/42` · `css-analyze` 27 threshold · `audit` 86/100 (only `closest` low).
+
+---
+
+## MCP 2.0 for your editor (Claude/Cursor)
+
+`bin/mimber mcp` is an MCP server (spec 2026-07-28, `mcp-go`):
+
+```bash
+./bin/mimber mcp --stdio          # stdio for Claude/Cursor
+./bin/mimber mcp --http :3202     # Streamable HTTP at http://127.0.0.1:3202/mcp
+./bin/mimber mcp --help
+```
+
+`.vscode/mcp.json` / `claude mcp`:
+```json
+{ "mcpServers": { "mimber": { "command": "/abs/path/Mimber/bin/mimber", "args": ["mcp","--stdio"], "env": { "THEMEKIT_STORE":"orionsuperteststore.myshopify.com","THEMEKIT_THEME_ID":"130563899438","THEMEKIT_BASE_THEME_ID":"130563932206" } } } }
+```
+
+**Tools** (LLM calls): `mimber_image_check`, `mimber_js_check`, `mimber_a11y_check`, `mimber_liquid_check`, `mimber_css_analyze`, `mimber_preview_url`, `mimber_build`, `mimber_deploy` (needs `THEMEKIT_PASSWORD`, destructive), `mimber_compare` (screenshots).
+
+**Resources:** `mimber://audit/audit.json` · `mimber://config/config.yml` (redacted) · `mimber://report/compare/README.md` + png
+**Prompts:** `mimber-modernize` · `mimber-fix-a11y`
+
+Keep `performance-investigations` MCP at `:3201`, Mimber at `:3202` — no port clash.
+
+---
+
+## Visual compare harness
+
+We ship a Playwright harness that loads the **base Timber** vs **Mimber** side-by-side (no Photoshop).
+
+```bash
+THEMEKIT_STORE=orionsuperteststore.myshopify.com \
+THEMEKIT_THEME_ID=130563899438 \
+THEMEKIT_BASE_THEME_ID=130563932206 \
+npx playwright test --grep "compare:" --reporter=list
+# or: ./bin/mimber harness --compare
+# output: playwright-report/compare/ (home-base.png vs home-mimber.png, etc.) + README.md
+```
+
+Last run on this repo: **discrepancy found** — `home` 223K→675K, `collection` 258K→488K, `product` 438K→1.0M. Screenshots in `playwright-report/compare/` show `Frontpage Collection` grid clipped, blue links (missing `base.css`), and `Liquid error (templates/index line 83): invalid url input` when `collection.products.first.featured_image` is nil — wrap with `{% if collection.products.first.featured_image %}`. Fix those two before next `deploy`.
 
 ---
 
 ## Structure
 
 ```
-assets/timber.js.liquid          496L frozen original (+ timber.human.js readable)
-assets/ajax-cart.js.liquid       563L frozen
-assets/timber.scss.liquid        58K SCSS legacy (now vanilla base.css; keep for diff)
-assets/base.css                  66K vanilla CSS (Dawn/Horizon, no SCSS — from timber.scss.liquid via sass + var(--color-*))
-assets/gift-card.css             9.7K vanilla CSS (from gift-card.scss.liquid)
-snippets/css-variables.liquid    Dawn/Horizon Liquid vars → :root { --color-primary: {{ settings.color_primary }} } (inline {% style %})
-snippets/ajax-cart-template.liquid  native <template> (was Handlebars)
-src/{prepare-transition,money-format,url,cache,utils,product-page,accessible-nav,drawers,shopify-api,ajax-cart,scheduler,mepto}.js  14 modules
-src/entry/{global,product,collection,customer,cart}.js  per-template splits (<14K gzip each, HTTP/2)
-dist/timber.{esm,pkgd}.{js,min.js}  legacy 1059L combined (fallback)
-dist/{global,product,collection,customer,cart}.{js,min.js} + dist/chunks/  split ESM (primary)
-dist/theme/                      Shopify 1.0 for ThemeKit (directory: dist/theme, now base.css + css-variables)
-vendor/themekit/                 oreoorbitz/themekit Go fork (cmd/mimber)
-cmd/mimber/main.go               Go proxy → vendor/themekit/cmd/mimber
-go.mod                           require esbuild v0.25 + thekit + cobra
-config.yml.example               ThemeKit legacy (store, password, theme_id → preview_theme_id)
-playwright.config.mjs + tests/preview.spec.js  harness (_ab/_fd/_sc)
-tests/unit/*.test.js             vitest jsdom (money-format, url, scheduler, cache, shopify-api + locale)
-eslint.config.js + .prettierrc + .stylelintrc + vitest.config.js  quality gates
+assets/timber.js.liquid        496L frozen original (+ timber.human.js readable)
+assets/timber.scss.liquid      58K legacy (keep for diff, now base.css)
+assets/base.css                66K vanilla (Dawn/Horizon, css-variables)
+src/*.js                       14 modules (prepare-transition → ajax-cart)
+src/entry/*.js                 5 splits (<14K gzip each)
+dist/timber.* + dist/{global,…} + dist/theme/  deploy target (1.0)
+vendor/themekit/               oreoorbitz/themekit fork (Go, 1.0)
+cmd/mimber/                    Go orchestrator + analyzers + mcp
+config.yml.example             store/theme_id/password → preview_theme_id
+tests/preview.spec.js + compare.spec.js + unit/
 ```
 
-`dist/theme` is the deploy target; `dist/timber.*` are ESM+IIFE. Legacy `vite.config.mjs`/`babel.config.json`/`bower.json`/`Gemfile`/`spec/` removed — Go esbuild now.
+`dist/theme` is what gets deployed. Legacy `vite.config.mjs`/`bower.json` removed — Go `esbuild` now.
 
 ---
 
 ## Links
 
-- Upstream Timber `2.2.2`: https://github.com/Shopify/Timber (MIT, deprecated)
-- Mepto `meptos@2.0.0`: https://github.com/oreoorbitz/Mepto (`window.mepto||jQuery`)
-- ThemeKit fork: https://github.com/oreoorbitz/themekit (Go, `vendor/themekit`, bundled with Mepto)
-- Shopify `shopify_common.js`: keep, `Handlebars` 1.3.0 **removed** (native `<template>`)
-- Plans: `orion/plans/004-mimber-timber-audit.md`
-
-License: MIT (`LICENSE`) — derivative of Timber.
+- Timber 2.2.2 (upstream, MIT): https://github.com/Shopify/Timber
+- Mepto: https://github.com/oreoorbitz/Mepto (`window.mepto||jQuery`)
+- ThemeKit fork: https://github.com/oreoorbitz/themekit (`vendor/themekit`)
+- Plans: `orion/plans/004-mimber-timber-audit.md` (if `orion/` sibling exists)
+- License: MIT — derivative of Timber.

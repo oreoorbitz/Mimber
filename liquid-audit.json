@@ -1,0 +1,176 @@
+{
+  "target": "/Users/adrian/code/orion/Mimber",
+  "total": 42,
+  "ok": 42,
+  "failed": 0,
+  "results": [
+    {
+      "file": "assets/ajax-cart.js.liquid",
+      "ok": true
+    },
+    {
+      "file": "assets/gift-card.scss.liquid",
+      "ok": true
+    },
+    {
+      "file": "assets/ico-select.svg.liquid",
+      "ok": true
+    },
+    {
+      "file": "assets/timber.js.liquid",
+      "ok": true
+    },
+    {
+      "file": "assets/timber.scss.liquid",
+      "ok": true
+    },
+    {
+      "file": "layout/theme.liquid",
+      "ok": true
+    },
+    {
+      "file": "snippets/ajax-cart-template.liquid",
+      "ok": true
+    },
+    {
+      "file": "snippets/blog-sidebar.liquid",
+      "ok": true
+    },
+    {
+      "file": "snippets/breadcrumb.liquid",
+      "ok": true
+    },
+    {
+      "file": "snippets/collection-sidebar.liquid",
+      "ok": true
+    },
+    {
+      "file": "snippets/collection-sorting.liquid",
+      "ok": true
+    },
+    {
+      "file": "snippets/comment.liquid",
+      "ok": true
+    },
+    {
+      "file": "snippets/css-variables.liquid",
+      "ok": true
+    },
+    {
+      "file": "snippets/oldIE-js.liquid",
+      "ok": true
+    },
+    {
+      "file": "snippets/onboarding-empty-collection.liquid",
+      "ok": true
+    },
+    {
+      "file": "snippets/onboarding-featured-collections.liquid",
+      "ok": true
+    },
+    {
+      "file": "snippets/onboarding-featured-products.liquid",
+      "ok": true
+    },
+    {
+      "file": "snippets/product-grid-item.liquid",
+      "ok": true
+    },
+    {
+      "file": "snippets/respond.liquid",
+      "ok": true
+    },
+    {
+      "file": "snippets/search-bar.liquid",
+      "ok": true
+    },
+    {
+      "file": "snippets/social-meta-tags.liquid",
+      "ok": true
+    },
+    {
+      "file": "snippets/tags-article.liquid",
+      "ok": true
+    },
+    {
+      "file": "templates/404.liquid",
+      "ok": true
+    },
+    {
+      "file": "templates/article.liquid",
+      "ok": true
+    },
+    {
+      "file": "templates/blog.liquid",
+      "ok": true
+    },
+    {
+      "file": "templates/cart.liquid",
+      "ok": true
+    },
+    {
+      "file": "templates/collection.liquid",
+      "ok": true
+    },
+    {
+      "file": "templates/collection.list.liquid",
+      "ok": true
+    },
+    {
+      "file": "templates/customers/account.liquid",
+      "ok": true
+    },
+    {
+      "file": "templates/customers/activate_account.liquid",
+      "ok": true
+    },
+    {
+      "file": "templates/customers/addresses.liquid",
+      "ok": true
+    },
+    {
+      "file": "templates/customers/login.liquid",
+      "ok": true
+    },
+    {
+      "file": "templates/customers/order.liquid",
+      "ok": true
+    },
+    {
+      "file": "templates/customers/register.liquid",
+      "ok": true
+    },
+    {
+      "file": "templates/customers/reset_password.liquid",
+      "ok": true
+    },
+    {
+      "file": "templates/gift_card.liquid",
+      "ok": true
+    },
+    {
+      "file": "templates/index.liquid",
+      "ok": true
+    },
+    {
+      "file": "templates/list-collections.liquid",
+      "ok": true
+    },
+    {
+      "file": "templates/page.contact.liquid",
+      "ok": true
+    },
+    {
+      "file": "templates/page.liquid",
+      "ok": true
+    },
+    {
+      "file": "templates/product.liquid",
+      "ok": true
+    },
+    {
+      "file": "templates/search.liquid",
+      "ok": true
+    }
+  ]
+}

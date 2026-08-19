@@ -1,7 +1,7 @@
 <!-- /snippets/ajax-cart-template.liquid — Mepto native <template> (no Handlebars, saves 46K) -->
 {% comment %}
   Native template for ajaxCart (replaces handlebars.min.js). Uses <template> + native JS in src/ajax-cart.js.
-  Keep {% raw %}/Liquid guards; handlebar {{#if}}/{{#each}} become plain JS in template clone.
+  Keep raw / Liquid guards; Handlebars {{#if}}/{{#each}} become plain JS in template clone.
 {% endcomment %}
 <template id="CartTemplate">
   <form action="/cart" method="post" novalidate class="cart ajaxcart">

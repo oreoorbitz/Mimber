@@ -1,9 +1,11 @@
+/*! Mimber Mepto v2.2.2-mepto.1 — Mepto-integrated, jQuery-free (esbuild Go) */
+
 import {
   getHash,
   loginForms,
   resetPasswordSuccess
-} from "./chunk-5BJ3D3CN.js";
-import "./chunk-R3VCPEU7.js";
+} from "./chunk-7ONAE77C.js";
+import "./chunk-KK2RWA72.js";
 
 // src/entry/customer.js
 if (typeof window !== "undefined") {

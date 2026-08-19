@@ -79,8 +79,10 @@
           <a href="{{ collection.url }}" title="{{ 'collections.general.link_title' | t: title: collection_title }}" class="grid__image">
             {% if collection.image %}
               {{ collection.image | image_url: width: 400 | image_tag: alt: collection_title, loading: 'lazy', widths: '200,400,600' }}
-            {% else %}
+            {% elsif collection.products.first.featured_image %}
               {{ collection.products.first.featured_image | image_url: width: 400 | image_tag: alt: collection_title, loading: 'lazy', widths: '200,400,600' }}
+            {% else %}
+              {% comment %} No image available (empty collection + no collection.image) — skip image_tag to avoid Liquid error {% endcomment %}
             {% endif %}
           </a>
 

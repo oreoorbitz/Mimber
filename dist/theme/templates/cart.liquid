@@ -27,7 +27,7 @@
                   More image size options at:
                     - http://docs.shopify.com/themes/filters/product-img-url
                 {% endcomment %}
-                <img src="{{ item | img_url: 'medium' }}" alt="{{ item.title | escape }}">
+                {{ item.image | image_url: width: 150 | image_tag: alt: item.title, loading: 'lazy', widths: '100,150,200' }}
               </a>
             </td>
             <td>

@@ -1,14 +1,16 @@
+/*! Mimber Mepto v2.2.2-mepto.1 — Mepto-integrated, jQuery-free (esbuild Go) */
+
 import {
   $,
   cacheSelectors
-} from "./chunk-DJ46SEGG.js";
+} from "./chunk-FKLTZ7RG.js";
 import {
   mobileNavToggle,
   responsiveVideos
-} from "./chunk-5BJ3D3CN.js";
+} from "./chunk-7ONAE77C.js";
 import {
   scheduler
-} from "./chunk-R3VCPEU7.js";
+} from "./chunk-KK2RWA72.js";
 
 // src/prepare-transition.js
 var TRANSITION_DURATION_PROPS = Object.freeze([
@@ -121,7 +123,7 @@ var accessibleNav = (timber) => {
   const directLis = [...nav.children].filter((el) => el.tagName === "LI");
   const topLevel = directLis.length ? directLis.flatMap((li) => [...li.querySelectorAll("a")]) : [...nav.querySelectorAll(":scope > li a")];
   const topLevelLinks = topLevel.length ? topLevel : allLinks.filter((a) => {
-    const li = a.parentElement && a.parentElement.tagName === "LI" ? a.parentElement : a.closest("li");
+    const li = a.closest("li");
     return li && li.parentElement === nav;
   });
   const parents = [...nav.getElementsByClassName("site-nav--has-dropdown")];
@@ -214,10 +216,21 @@ var Drawer = class {
     this.init();
   }
   init() {
-    const openEls = [...document.querySelectorAll(this.config.open)];
-    openEls.forEach((el) => el.addEventListener("click", this.open.bind(this)));
-    const closeEls = this.drawer ? [...this.drawer.querySelectorAll(this.config.close)] : [];
-    closeEls.forEach((el) => el.addEventListener("click", this.close.bind(this)));
+    const selAll = (sel, root = document) => {
+      const bare = sel.trim();
+      if (root === document) {
+        if (/^\.[\w-]+$/.test(bare)) return [...document.getElementsByClassName(bare.slice(1))];
+        if (/^[a-zA-Z][\w-]*$/.test(bare)) return [...document.getElementsByTagName(bare)];
+      } else if (root && root.nodeType === 1) {
+        if (/^\.[\w-]+$/.test(bare)) return [...root.getElementsByClassName(bare.slice(1))];
+        if (/^[a-zA-Z][\w-]*$/.test(bare)) return [...root.getElementsByTagName(bare)];
+      }
+      return [...root.querySelectorAll(sel)];
+    };
+    const openEls = selAll(this.config.open);
+    for (let i = 0, n = openEls.length; i < n; i++) openEls[i].addEventListener("click", this.open.bind(this));
+    const closeEls = this.drawer ? selAll(this.config.close, this.drawer) : [];
+    for (let i = 0, n = closeEls.length; i < n; i++) closeEls[i].addEventListener("click", this.close.bind(this));
   }
   open(evt) {
     let externalCall = false;
@@ -231,11 +244,9 @@ var Drawer = class {
     const body = window.timber && window.timber.cache && unwrap2(window.timber.cache.$body) || document.body;
     trigger(body, "beforeDrawerOpen.timber", this);
     scheduler.mutate(() => {
-      this.nodes.moved.forEach((el) => el.classList.add("is-transitioning"));
+      for (let i = 0, n = this.nodes.moved.length; i < n; i++) this.nodes.moved[i].classList.add("is-transitioning");
       prepareTransition(this.drawer);
-      this.nodes.parent.forEach(
-        (el) => el.classList.add(this.config.openClass, this.config.dirOpenClass)
-      );
+      for (let i = 0, n = this.nodes.parent.length; i < n; i++) this.nodes.parent[i].classList.add(this.config.openClass, this.config.dirOpenClass);
     });
     this.drawerIsOpen = true;
     this.trapFocus(this.drawer, "drawer_focus");
@@ -276,11 +287,9 @@ var Drawer = class {
       }
     }
     scheduler.mutate(() => {
-      this.nodes.moved.forEach((el) => prepareTransition(el));
+      for (let i = 0, n = this.nodes.moved.length; i < n; i++) prepareTransition(this.nodes.moved[i]);
       prepareTransition(this.drawer);
-      this.nodes.parent.forEach(
-        (el) => el.classList.remove(this.config.dirOpenClass, this.config.openClass)
-      );
+      for (let i = 0, n = this.nodes.parent.length; i < n; i++) this.nodes.parent[i].classList.remove(this.config.dirOpenClass, this.config.openClass);
     });
     this.drawerIsOpen = false;
     this.removeTrapFocus(this.drawer, "drawer_focus");

@@ -1,7 +1,9 @@
+/*! Mimber Mepto v2.2.2-mepto.1 — Mepto-integrated, jQuery-free (esbuild Go) */
+
 import {
   __spreadValues,
   scheduler
-} from "./chunk-R3VCPEU7.js";
+} from "./chunk-KK2RWA72.js";
 
 // src/shopify-api.js
 var getShopifyRoot = () => {
@@ -146,7 +148,21 @@ ShopifyAPI.changeItem = (line, quantity, callback) => {
 
 // src/ajax-cart.js
 var q = (sel, root = document) => root.querySelector(sel);
-var qq = (sel, root = document) => [...root.querySelectorAll(sel)];
+var qq = (sel, root = document) => {
+  const bare = sel.trim();
+  if (root === document) {
+    if (/^#[\w-]+$/.test(bare)) {
+      const el = document.getElementById(bare.slice(1));
+      return el ? [el] : [];
+    }
+    if (/^\.[\w-]+$/.test(bare)) return [...document.getElementsByClassName(bare.slice(1))];
+    if (/^[a-zA-Z][\w-]*$/.test(bare)) return [...document.getElementsByTagName(bare)];
+  } else if (root && root.nodeType === 1) {
+    if (/^\.[\w-]+$/.test(bare)) return [...root.getElementsByClassName(bare.slice(1))];
+    if (/^[a-zA-Z][\w-]*$/.test(bare)) return [...root.getElementsByTagName(bare)];
+  }
+  return [...root.querySelectorAll(sel)];
+};
 var I18N = {
   empty: "Your cart is empty",
   savingsHtml: "You save [savings]"
